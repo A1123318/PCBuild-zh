@@ -1,3 +1,10 @@
+from fastapi.responses import FileResponse
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse("index.html")  # 與 app.py 同資料夾的 index.html
+
+
 # app.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
