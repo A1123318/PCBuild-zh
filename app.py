@@ -1,11 +1,5 @@
-from fastapi.responses import FileResponse
-
-@app.get("/", include_in_schema=False)
-def home():
-    return FileResponse("index.html")  # 與 app.py 同資料夾的 index.html
-
-
 # app.py
+from fastapi.responses import FileResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,6 +13,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse("index.html")  # 與 app.py 同資料夾的 index.html
 
 # 優先用環境變數；你稍後會設定 GEMINI_API_KEY/GOOGLE_API_KEY
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
