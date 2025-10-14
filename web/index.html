@@ -2,31 +2,104 @@
 <meta charset="utf-8" />
 <title>PCBuild-zh · Chat</title>
 <style>
-  body { font-family: ui-sans-serif, system-ui; max-width: 720px; margin: 40px auto; }
-  #log { white-space: pre-wrap; border: 1px solid #ddd; padding: 12px; border-radius: 8px; min-height: 160px; }
+  :root { color-scheme: light dark; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei"; max-width: 720px; margin: 40px auto; padding: 0 12px; line-height: 1.6; }
+  h1 { margin: 0 0 16px; }
+
+  /* Chat 容器 */
+  #log {
+    border: 1px solid #ddd; padding: 12px; border-radius: 8px;
+    min-height: 160px; max-height: 60vh; overflow: auto;
+    background: Canvas; color: CanvasText;
+  }
+
+  .bubble { padding: 10px 12px; border-radius: 10px; margin: 8px 0; }
+  .bubble.user { background: rgba(0, 0, 0, .05); }
+  .bubble.ai   { background: rgba(0, 128, 255, .06); }
+
+  /* Markdown 呈現（避免用 pre-wrap 卡表格） */
+  .markdown-body { white-space: normal; overflow-wrap: anywhere; }
+  .markdown-body p { margin: 0.6em 0; }
+  .markdown-body code { font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace; padding: .1em .3em; border-radius: 4px; background: color-mix(in srgb, CanvasText 10%, Canvas); }
+  .markdown-body pre { padding: 12px; border-radius: 8px; overflow: auto; background: color-mix(in srgb, CanvasText 8%, Canvas); }
+  .markdown-body pre code { background: transparent; padding: 0; }
+
+  /* 表格樣式（GFM） */
+  .markdown-body table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.95rem; }
+  .markdown-body th, .markdown-body td { border: 1px solid #ddd; padding: 6px 8px; vertical-align: top; }
+  .markdown-body thead th { background: color-mix(in srgb, CanvasText 6%, Canvas); }
+  .markdown-body tbody tr:nth-child(odd) { background: color-mix(in srgb, CanvasText 3%, Canvas); }
+
+  /* 讓輸入列好按 */
   input, button { font-size: 16px; padding: 8px; }
+  #msg { width: 75%; }
 </style>
+
 <h1>和 AI 對話</h1>
 <div id="log"></div>
 <p>
-  <input id="msg" placeholder="輸入訊息…" style="width: 75%;" />
+  <input id="msg" placeholder="輸入訊息…" />
   <button id="send">送出</button>
 </p>
+
+<!-- Markdown 解析 ＋ XSS 安全消毒（CDN） -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
 <script>
 const API = "/api/chat"; // 與同網域的 FastAPI 溝通（由 Caddy 反代）
 const log = document.getElementById('log');
 const msg = document.getElementById('msg');
-document.getElementById('send').onclick = async () => {
+const sendBtn = document.getElementById('send');
+
+// Marked 設定：啟用 GFM（支援表格）、避免亂改 ID/mangle
+marked.setOptions({ gfm: true, breaks: true, headerIds: false, mangle: false });
+
+function appendBubble(who, html) {
+  const div = document.createElement('div');
+  div.className = `bubble ${who} markdown-body`;
+  div.innerHTML = html; // 已先經過 DOMPurify 處理
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function appendTextBubble(who, text) {
+  // 使用行內 Markdown 解析，適合使用者短訊
+  const html = DOMPurify.sanitize(marked.parseInline(text));
+  appendBubble(who, html);
+}
+
+async function send() {
   const m = msg.value.trim();
   if (!m) return;
-  log.textContent += `你：${m}\n`;
-  msg.value = "";
-  const r = await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: m })
-  });
-  const data = await r.json();
-  log.textContent += `AI：${data.reply}\n\n`;
-};
+  appendTextBubble('user', m);
+  msg.value = '';
+  msg.focus();
+  sendBtn.disabled = true;
+
+  try {
+    const r = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: m })
+    });
+    const data = await r.json();
+    const raw = (data && data.reply) ? String(data.reply) : '';
+    // 這裡用完整 Markdown 解析（支援表格、標題、清單、程式碼塊…）
+    const html = DOMPurify.sanitize(marked.parse(raw));
+    appendBubble('ai', html);
+  } catch (e) {
+    appendBubble('ai', DOMPurify.sanitize(`<p>發生錯誤：${String(e)}</p>`));
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+sendBtn.onclick = send;
+msg.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
 </script>
