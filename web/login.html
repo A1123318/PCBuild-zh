@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>登入 · PCBuild-zh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root { color-scheme: light dark; }
+      :root {
+        --surface: Canvas;
+        --text: CanvasText;
+        --border: color-mix(in srgb, CanvasText 12%, Canvas);
+        --btn-bg: color-mix(in srgb, CanvasText 5%, Canvas);
+        --btn-bg-hover: color-mix(in srgb, CanvasText 10%, Canvas);
+        --error: #d93025;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei";
+        background: radial-gradient(circle at top, color-mix(in srgb, CanvasText 5%, Canvas), Canvas);
+        color: var(--text);
+      }
+      .container {
+        width: 100%;
+        max-width: 420px;
+        padding: 16px;
+      }
+      .card {
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        padding: 24px 20px 20px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 22px;
+        margin-bottom: 4px;
+        text-align: center;
+      }
+      .subtitle {
+        text-align: center;
+        font-size: 14px;
+        margin: 0 0 20px;
+        opacity: 0.9;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      label {
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      input[type="email"],
+      input[type="password"] {
+        padding: 10px 12px;
+        font-size: 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: 2px solid color-mix(in srgb, CanvasText 25%, Canvas);
+        outline-offset: 1px;
+      }
+      .actions-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .btn-primary {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--btn-bg);
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 500;
+        min-width: 90px;
+      }
+      .btn-primary:hover:enabled {
+        background: var(--btn-bg-hover);
+      }
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .btn-link {
+        border: none;
+        background: none;
+        padding: 0;
+        font-size: 13px;
+        text-decoration: underline;
+        color: color-mix(in srgb, CanvasText 60%, Canvas);
+      }
+      .btn-link:hover {
+        color: color-mix(in srgb, CanvasText 80%, Canvas);
+      }
+      .hint {
+        margin: 8px 0 0;
+        font-size: 13px;
+        text-align: center;
+      }
+      .hint a {
+        color: inherit;
+        text-decoration: underline;
+      }
+      .error {
+        margin: 8px 0 0;
+        font-size: 13px;
+        color: var(--error);
+        min-height: 1.2em;
+        text-align: center;
+      }
+      .back-home {
+        margin-top: 12px;
+        text-align: center;
+        font-size: 13px;
+      }
+      .back-home a {
+        color: inherit;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="logo">PCBuild-zh</div>
+        <p class="subtitle">登入以保存配單與後續功能</p>
+
+        <form id="login-form" novalidate>
+          <label>
+            Email
+            <input id="email" type="email" autocomplete="email" required />
+          </label>
+
+          <label>
+            密碼
+            <input id="password" type="password" autocomplete="current-password" required minlength="8" />
+          </label>
+
+          <div class="actions-row">
+            <button type="button" id="forgot-btn" class="btn-link">
+              忘記密碼？
+            </button>
+            <button type="submit" id="login-btn" class="btn-primary">
+              登入
+            </button>
+          </div>
+
+          <p class="hint">
+            還沒有帳號？<a href="/register.html">前往註冊</a>
+          </p>
+
+          <p id="error" class="error" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div class="back-home">
+        <a href="/">回到首頁</a>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("login-form");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const loginBtn = document.getElementById("login-btn");
+      const errorEl = document.getElementById("error");
+      const forgotBtn = document.getElementById("forgot-btn");
+
+      // 忘記密碼：目前只做提示，之後再實作真正的流程
+      forgotBtn.addEventListener("click", () => {
+        alert("忘記密碼功能尚未實作，之後會提供重設密碼流程。");
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.textContent = "";
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+          errorEl.textContent = "請輸入 Email 與密碼。";
+          return;
+        }
+
+        loginBtn.disabled = true;
+        const originalText = loginBtn.textContent;
+        loginBtn.textContent = "登入中…";
+
+        try {
+          const resp = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              password,
+            }),
+          });
+
+          let data = {};
+          try {
+            data = await resp.json();
+          } catch {
+            data = {};
+          }
+
+          if (!resp.ok) {
+            // 後端會在錯誤時回傳 {"detail": "..."}，盡量顯示那個訊息
+            throw new Error(data.detail || "登入失敗，請稍後再試。");
+          }
+
+          if (!data.access_token) {
+            throw new Error("後端未回傳 access_token。");
+          }
+
+          // 保存登入資訊（之後首頁會用來顯示使用者狀態）
+          localStorage.setItem("pcbuild_token", data.access_token);
+          localStorage.setItem("pcbuild_email", email);
+
+          // 登入成功 → 回首頁
+          window.location.href = "/";
+        } catch (err) {
+          errorEl.textContent = err.message || "登入失敗。";
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = originalText;
+        }
+      });
+    </script>
+  </body>
+</html>
