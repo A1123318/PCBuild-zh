@@ -1,10 +1,21 @@
 # backend/security.py
+import os
+from datetime import datetime, timedelta, timezone
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
+from jose import jwt, JWTError
 
 # Argon2id：目前主流且安全性高的密碼雜湊演算法
 _ph = PasswordHasher()
 
+# 正式環境：必須從環境變數取得密鑰，沒設定就直接報錯
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY is not set in environment")
+
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRES_MINUTES = int(os.getenv("JWT_EXPIRES_MINUTES", "60"))
 
 def hash_password(plain_password: str) -> str:
     """
