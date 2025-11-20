@@ -217,30 +217,41 @@
             }),
           });
 
-          let data = {};
+          let data = null;
           try {
             data = await resp.json();
           } catch {
-            data = {};
+            data = null;
           }
 
           if (!resp.ok) {
-            // 後端會在錯誤時回傳 {"detail": "..."}，盡量顯示那個訊息
-            throw new Error(data.detail || "登入失敗，請稍後再試。");
+            // 前端只顯示「帳號或密碼錯誤」或「登入失敗」，不曝露後端細節
+            if (resp.status === 400 || resp.status === 401) {
+              errorEl.textContent = "帳號或密碼錯誤。";
+            } else {
+              errorEl.textContent = "登入失敗，請再試一次。";
+            }
+            console.error("Login error:", resp.status, data);
+            return;
           }
 
-          if (!data.access_token) {
-            throw new Error("後端未回傳 access_token。");
+          const token = data && data.access_token;
+          if (!token) {
+            // 這種屬於後端邏輯問題，不給使用者看細節，只在 console 記錄
+            console.error("Login error: missing access_token in response:", data);
+            errorEl.textContent = "登入失敗，請再試一次。";
+            return;
           }
 
-          // 保存登入資訊（之後首頁會用來顯示使用者狀態）
-          localStorage.setItem("pcbuild_token", data.access_token);
+          // 目前先維持 localStorage，之後再改成 HttpOnly Cookie + 伺服器端 Session
+          localStorage.setItem("pcbuild_token", token);
           localStorage.setItem("pcbuild_email", email);
 
           // 登入成功 → 回首頁
           window.location.href = "/";
         } catch (err) {
-          errorEl.textContent = err.message || "登入失敗。";
+          console.error("Login network error:", err);
+          errorEl.textContent = "登入失敗，請再試一次。";
         } finally {
           loginBtn.disabled = false;
           loginBtn.textContent = originalText;
