@@ -2,7 +2,8 @@
 from typing import List, Literal
 import os
 from ipaddress import ip_address, ip_network
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +15,7 @@ from pydantic import BaseModel, EmailStr, constr
 from google import genai
 
 from backend.db import SessionLocal
-from backend.models import User
+from backend.models import User, Session
 from backend.security import (
     hash_password,
     verify_password,
@@ -65,6 +66,8 @@ app.add_middleware(_DocsGateMiddleware)
 # ===== AI 客戶端 =====
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
 SYSTEM_PROMPT = "你是電腦組裝顧問，所有回覆一律使用繁體中文。"
+SESSION_COOKIE_NAME = "pcbuild_session"
+SESSION_EXPIRES_MINUTES = int(os.getenv("SESSION_EXPIRES_MINUTES", "120"))  # 例如 120 分鐘
 
 
 # ===== 多輪對話資料結構 =====
@@ -190,10 +193,14 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
 
 # ===== 登入 API（只接受 email + password） =====
 @app.post("/api/auth/login", response_model=LoginOut)
-def login(body: LoginIn, db: Session = Depends(get_db)):
+def login(
+    body: LoginIn,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    # 1. 驗證帳號密碼
     user = db.query(User).filter(User.email == body.email).first()
 
-    # 不回傳太多細節，避免暴露帳號是否存在
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -206,6 +213,32 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
             detail="帳號已停用，請聯絡管理者",
         )
 
+    # 2. 建立新的 session 紀錄
+    now = datetime.now(timezone.utc)
+    ttl = timedelta(minutes=SESSION_EXPIRES_MINUTES)
+    expires_at = now + ttl
+
+    session = Session(
+        id=uuid4(),
+        user_id=user.id,
+        expires_at=expires_at,
+    )
+    db.add(session)
+    db.commit()
+
+    # 3. 設定 HttpOnly + Secure + SameSite=Lax Cookie
+    #    max_age 使用秒數，與資料庫中的 expires_at 對應
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=str(session.id),
+        max_age=int(ttl.total_seconds()),
+        httponly=True,
+        secure=True,      # 正式環境使用 HTTPS（例如經 Cloudflare Tunnel）
+        samesite="Lax",
+        path="/",
+    )
+
+    # 4. 暫時仍回傳 JWT 給前端（之後會拿掉 localStorage 再調整）
     token = create_access_token(user_id=user.id)
     return LoginOut(access_token=token, token_type="bearer")
 
