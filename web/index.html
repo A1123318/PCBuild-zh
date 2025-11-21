@@ -111,7 +111,7 @@
 <!-- 新增：右上角註冊 / 登入按鈕 -->
 <header class="top-bar">
   <div class="top-bar__logo">PCBuild-zh</div>
-  <div class="top-bar__actions">
+  <div class="top-bar__actions" id="top-bar-actions">
     <a href="/register.html" class="top-bar__button">註冊</a>
     <a href="/login.html" class="top-bar__button">登入</a>
   </div>
@@ -136,6 +136,7 @@ const API = "/api/chat";
 const log = document.getElementById('log');
 const msg = document.getElementById('msg');
 const sendBtn = document.getElementById('send');
+const topBarActions = document.getElementById('top-bar-actions');
 
 marked.setOptions({ gfm: true, breaks: true, headerIds: false, mangle: false });
 
@@ -220,6 +221,53 @@ async function send() {
   }
 }
 
+async function loadAuthState() {
+  if (!topBarActions) return;
+
+  try {
+    const resp = await fetch("/api/auth/me", {
+      method: "GET",
+      // same-origin 預設會帶 Cookie，不寫也可以，這裡只是明示
+      credentials: "same-origin",
+    });
+
+    if (!resp.ok) {
+      // 未登入或 session 無效 → 保持預設「註冊 / 登入」按鈕
+      return;
+    }
+
+    const data = await resp.json();
+    const username = data.username || data.email || "User";
+
+    // 已登入 → 顯示使用者名稱 + 登出按鈕
+    topBarActions.innerHTML = `
+      <span style="margin-right: 8px; font-size: 14px;">歡迎，${username}</span>
+      <button id="logout-btn" class="top-bar__button" type="button">登出</button>
+    `;
+
+    const logoutBtn = document.getElementById("logout-btn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        try {
+          const resp = await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "same-origin",
+          });
+          // 無論成功失敗，都重新整理畫面（Cookie 會在成功時被清除）
+          window.location.href = "/";
+        } catch (e) {
+          // 網路異常也直接刷新，避免卡在錯狀態
+          window.location.href = "/";
+        }
+      });
+    }
+  } catch (e) {
+    // /api/auth/me 呼叫失敗時忽略，維持「未登入」狀態
+    console.error("loadAuthState error:", e);
+  }
+}
+
+
 sendBtn.onclick = send;
 /* Enter 送出；Shift+Enter 換行 */
 msg.addEventListener('keydown', (e) => {
@@ -230,5 +278,8 @@ msg.addEventListener('keydown', (e) => {
 });
 msg.addEventListener('input', autoResize);
 window.addEventListener('resize', autoResize);
-document.addEventListener('DOMContentLoaded', autoResize);
+document.addEventListener('DOMContentLoaded', () => {
+  autoResize();
+  loadAuthState();
+});
 </script>

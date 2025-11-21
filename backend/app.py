@@ -320,6 +320,48 @@ def login(
     token = create_access_token(user_id=user.id)
     return LoginOut(access_token=token, token_type="bearer")
 
+@app.post("/api/auth/logout", status_code=204)
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """
+    將目前 session 標記為 revoked，並清除瀏覽器 Cookie。
+    未登入時呼叫也回 204，不暴露細節。
+    """
+    raw_token = request.cookies.get(SESSION_COOKIE_NAME)
+
+    if raw_token:
+        try:
+            session_id = UUID(raw_token)
+            session = (
+                db.query(Session)
+                .filter(Session.id == session_id, Session.revoked == False)
+                .first()
+            )
+            if session:
+                session.revoked = True
+                db.commit()
+        except ValueError:
+            # Cookie 不是合法 UUID，忽略即可
+            pass
+
+    # 清除瀏覽器端 Cookie
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value="",
+        max_age=0,
+        expires=0,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        path="/",
+    )
+
+    # 204 No Content
+    return
+
 
 # ===== 靜態網站：最後才 mount，避免吃掉 API 路由 =====
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
