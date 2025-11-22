@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, TypeAdapter
 from google import genai
 
 from backend.db import SessionLocal
@@ -65,6 +65,7 @@ app.add_middleware(_DocsGateMiddleware)
 # ===== AI 客戶端 =====
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
 SYSTEM_PROMPT = "你是電腦組裝顧問，所有回覆一律使用繁體中文。"
+EMAIL_ADAPTER = TypeAdapter(EmailStr)
 SESSION_COOKIE_NAME = "pcbuild_session"
 SESSION_EXPIRES_MINUTES = int(os.getenv("SESSION_EXPIRES_MINUTES", "120"))  # 例如 120 分鐘
 
@@ -226,8 +227,8 @@ def get_me(current_user: User = Depends(get_current_user)):
 def register(body: RegisterIn, db: Session = Depends(get_db)):
     # 先檢查 Email 格式（避免 Pydantic 回 422）
     try:
-        EmailStr(body.email)
-    except ValueError:
+        EMAIL_ADAPTER.validate_python(body.email)
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email 格式不正確",
@@ -280,8 +281,8 @@ def login(
 ):
     # 先檢查 Email 格式
     try:
-        EmailStr(body.email)
-    except ValueError:
+        EMAIL_ADAPTER.validate_python(body.email)
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email 格式不正確",
