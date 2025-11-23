@@ -253,6 +253,24 @@
       const passwordField = document.querySelector('[data-field="password"]');
       const passwordConfirmField = document.querySelector('[data-field="password-confirm"]');
 
+      function refreshGlobalErrorFromFields() {
+        const fields = [
+          emailField,
+          usernameField,
+          passwordField,
+          passwordConfirmField,
+        ];
+        const hasError = fields.some(
+          (field) => field && field.classList.contains("field-error")
+        );
+
+        // 當所有欄位都沒有紅框錯誤，就把下方總體錯誤訊息清掉
+        if (!hasError) {
+          errorEl.textContent = "";
+        }
+      }
+
+
       emailInput.addEventListener("blur", validateEmailField);
       usernameInput.addEventListener("blur", validateUsernameField);
       passwordInput.addEventListener("blur", validatePasswordField);
@@ -274,6 +292,9 @@
         field.classList.remove("field-error");
         const msgEl = field.querySelector(".field-error-text");
         if (msgEl) msgEl.textContent = "";
+
+        // 這個欄位改正後，檢查是不是所有紅框都消失了
+        refreshGlobalErrorFromFields();
       }
 
       function validateEmailField() {
