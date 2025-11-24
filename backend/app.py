@@ -11,8 +11,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, constr, TypeAdapter
 
-from api.chat import router as chat_router
-from api.debug import router as debug_router
+from backend.api.chat import router as chat_router
+from backend.api.debug import router as debug_router
 
 from backend.db import SessionLocal
 from backend.models import User, Session
