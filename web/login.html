@@ -355,8 +355,59 @@
             // 依你的需求：輸入無效帳號或密碼，一律顯示「帳號或密碼錯誤」
             if (resp.status === 400 || resp.status === 401) {
               msg = "帳號或密碼錯誤。";
-              setFieldError(emailField, "帳號或密碼錯誤。");
-              setFieldError(passwordField, "帳號或密碼錯誤。");
+
+              if (
+                (resp.status === 400 || resp.status === 401) &&
+                data &&
+                data.detail &&
+                typeof data.detail === "object"
+              ) {
+                const errors = data.detail.errors || {};
+                const globalMessages = [];
+
+                Object.entries(errors).forEach(([field, rawMsg]) => {
+                  const fieldMsg = String(rawMsg || "");
+
+                  switch (field) {
+                    case "email":
+                      setFieldError(emailField, fieldMsg);
+                      break;
+
+                    case "password":
+                      setFieldError(passwordField, fieldMsg);
+                      break;
+
+                    // 帳號或密碼錯誤：兩欄一起標紅
+                    case "credentials":
+                      setFieldError(emailField, fieldMsg);
+                      setFieldError(passwordField, fieldMsg);
+                      globalMessages.push(fieldMsg);
+                      break;
+
+                    // 帳號停用：兩欄一起標紅，顯示停用訊息
+                    case "account":
+                      setFieldError(emailField, fieldMsg);
+                      setFieldError(passwordField, fieldMsg);
+                      globalMessages.push(fieldMsg);
+                      break;
+
+                    // 通用全域錯誤
+                    case "_global":
+                      globalMessages.push(fieldMsg);
+                      break;
+
+                    default:
+                      globalMessages.push(fieldMsg);
+                      break;
+                  }
+                });
+
+                if (globalMessages.length > 0) {
+                  msg = globalMessages.join(" ");
+                } else {
+                  msg = "請修正紅色標示的欄位。";
+                }
+              }
             }
 
             errorEl.textContent = msg;
