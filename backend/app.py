@@ -284,21 +284,20 @@ def login(
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email 格式不正確",
+            detail={"errors": {"email": "Email 格式不正確。"}},
         )
     # 1. 驗證帳號密碼
     user = db.query(User).filter(User.email == body.email).first()
-
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="帳號或密碼錯誤",
+            detail={"errors": {"credentials": "帳號或密碼錯誤。"}},
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="帳號已停用，請聯絡管理者",
+            detail={"errors": {"account": "帳號已停用，請聯絡管理者。"}},
         )
 
     # 2. 建立新的 session 紀錄
