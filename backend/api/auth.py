@@ -11,7 +11,11 @@ from backend.api.deps import get_db
 from backend.models import User, Session as SessionModel
 from backend.schemas.auth import RegisterIn, RegisterOut, LoginIn, MeOut
 from backend.security import hash_password, verify_password
-
+from backend.services.auth.email_verification import (
+    send_signup_verification_for_user,
+    verify_signup_token_and_activate_user,
+    InvalidOrExpiredTokenError,
+)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 EMAIL_ADAPTER = TypeAdapter(EmailStr)
@@ -97,7 +101,7 @@ def get_me(current_user: User = Depends(get_current_user)) -> MeOut:
 # ===== 註冊 =====
 
 @router.post("/register", response_model=RegisterOut)
-def register(body: RegisterIn, db: OrmSession = Depends(get_db)) -> RegisterOut:
+def register(body: RegisterIn, request: Request, db: OrmSession = Depends(get_db)) -> RegisterOut:
     # Email 格式檢查（避免 Pydantic 回 422）
     try:
         EMAIL_ADAPTER.validate_python(body.email)
@@ -125,9 +129,20 @@ def register(body: RegisterIn, db: OrmSession = Depends(get_db)) -> RegisterOut:
         is_active=True,
         is_admin=False,
     )
+    # 確保新註冊的使用者預設為未啟用（若你希望強制經過 email 驗證）
+    # 若資料庫預設 is_active = TRUE，這裡可以覆蓋為 False
+    user.is_active = False
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # 寄出註冊驗證信（使用 url_for 產生完整驗證網址）
+    send_signup_verification_for_user(
+        db=db,
+        user=user,
+        request=request,
+    )
+
 
     return RegisterOut(
         id=user.id,
@@ -135,6 +150,38 @@ def register(body: RegisterIn, db: OrmSession = Depends(get_db)) -> RegisterOut:
         username=user.username,
         created_at=user.created_at,
     )
+
+
+# ===== Email Verification =====
+@router.get("/verify-email/{token}", name="verify_email")
+def verify_email(
+    token: str,
+    db: OrmSession = Depends(get_db),
+):
+    """
+    註冊 email 驗證入口。
+
+    - 由 email 連結中的 token 帶入 path
+    - 驗證成功後啟用使用者帳號
+    """
+    try:
+        user = verify_signup_token_and_activate_user(
+            db=db,
+            public_token=token,
+        )
+    except InvalidOrExpiredTokenError:
+        # 統一回 400，避免暴露是「已使用」還是「不存在」
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="驗證連結無效或已過期。",
+        )
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "detail": "Email 驗證成功，帳號已啟用。",
+    }
 
 
 # ===== 登入 =====
@@ -156,8 +203,9 @@ def login(
     if not user or not verify_password(body.password, user.password_hash):
         _raise_400({"credentials": "帳號或密碼錯誤。"})
 
+    # 2-1. 尚未完成 Email 驗證的帳號，一律拒絕登入
     if not user.is_active:
-        _raise_400({"account": "帳號已停用，請聯絡管理者。"})
+        _raise_400({"email": "Email 尚未驗證，請先完成信箱驗證。"})
 
     # 3. 建立新的 session 紀錄（使用 ORM）
     now = datetime.now(timezone.utc)
