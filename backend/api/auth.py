@@ -10,7 +10,7 @@ from pydantic import EmailStr, TypeAdapter
 
 from backend.api.deps import get_db
 from backend.models import User, Session as SessionModel
-from backend.schemas.auth import RegisterIn, RegisterOut, LoginIn, MeOut
+from backend.schemas.auth import RegisterIn, RegisterOut, LoginIn, MeOut, ResendVerificationIn
 from backend.security import hash_password, verify_password
 from backend.services.auth.email_verification import (
     send_signup_verification_for_user,
