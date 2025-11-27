@@ -469,7 +469,7 @@
 
           // 3. 註冊成功：後端已建立帳號、寄出驗證信並寫入 HttpOnly Cookie
           //    前端只需導向「請驗證電子郵件」說明頁，不在網址帶出任何 Email 或 token
-          window.location.href = "/verify-email-pending";
+          window.location.href = "/verify-email-pending.html";
         } catch (err) {
           console.error("Register network error:", err);
           errorEl.textContent = "註冊失敗，請稍後再試。";

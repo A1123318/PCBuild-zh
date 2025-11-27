@@ -201,7 +201,7 @@ def verify_email(
         )
     except InvalidOrExpiredTokenError:
         return RedirectResponse(
-            url="/verify-email-failed",
+            url="/verify-email-failed.html",
             status_code=status.HTTP_302_FOUND,
         )
 
