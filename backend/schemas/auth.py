@@ -28,3 +28,7 @@ class MeOut(BaseModel):
     username: str
     is_admin: bool
     created_at: datetime
+
+
+class ResendVerificationIn(BaseModel):
+    email: str

@@ -16,6 +16,8 @@ from backend.services.auth.email_verification import (
     send_signup_verification_for_user,
     verify_signup_token_and_activate_user,
     InvalidOrExpiredTokenError,
+    resend_signup_verification_for_email,
+    VerificationEmailRateLimitedError,
 )
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -205,6 +207,36 @@ def verify_email(
 
     return resp
 
+
+# ===== 重新寄送驗證信 =====
+@router.post("/resend-verification")
+def resend_verification(
+    body: ResendVerificationIn,
+    request: Request,
+    db: OrmSession = Depends(get_db),
+):
+    # 1. 檢查 Email 格式
+    try:
+        EMAIL_ADAPTER.validate_python(body.email)
+    except Exception:
+        _raise_400({"email": "Email 格式不正確。"})
+
+    # 2. 嘗試重新寄送驗證信
+    try:
+        resend_signup_verification_for_email(
+            db=db,
+            email=body.email,
+            request=request,
+        )
+    except VerificationEmailRateLimitedError:
+        # 過於頻繁，回傳 429 並提示
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"errors": {"email": "驗證信寄送過於頻繁，請稍後再試。"}},
+        )
+
+    # 3. 一律回傳成功（不暴露帳號是否存在或是否已驗證）
+    return {"ok": True}
 
 
 # ===== 登入 =====

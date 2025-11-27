@@ -26,6 +26,14 @@ DEFAULT_LIFETIME_HOURS: dict[VerificationPurpose, int] = {
     VerificationPurpose.SIGNUP: 24,
 }
 
+# 重新寄送驗證信的最小間隔（分鐘）
+RESEND_MIN_INTERVAL_MINUTES = 10
+
+
+class VerificationEmailRateLimitedError(Exception):
+    """在允許時間間隔內過度頻繁要求重新寄送驗證信時拋出。"""
+
+
 # 專用 Argon2id hasher，用來雜湊「驗證碼」，與密碼雜湊邏輯隔離
 _token_hasher = PasswordHasher()
 
@@ -84,6 +92,24 @@ def _resolve_lifetime_hours(
     if override_hours is not None:
         return override_hours
     return DEFAULT_LIFETIME_HOURS[purpose]
+
+
+def _get_latest_token_for_user(
+    db: Session,
+    user_id: int,
+    *,
+    purpose: VerificationPurpose,
+) -> EmailVerificationToken | None:
+    """取得某個使用者在指定用途下最新的一筆驗證 token。"""
+    return (
+        db.query(EmailVerificationToken)
+        .filter(
+            EmailVerificationToken.user_id == user_id,
+            EmailVerificationToken.purpose == purpose.value,
+        )
+        .order_by(EmailVerificationToken.created_at.desc())
+        .first()
+    )
 
 
 # === 通用發行 / 驗證流程（未綁定「註冊」或「登入」） ===
@@ -275,3 +301,47 @@ def send_signup_verification_for_user(
     )
 
     return str(verify_url)
+
+
+def resend_signup_verification_for_email(
+    db: Session,
+    email: str,
+    *,
+    request: Request,
+    min_interval_minutes: int = RESEND_MIN_INTERVAL_MINUTES,
+) -> None:
+    """
+    依 Email 重新寄送註冊驗證信。
+
+    設計重點：
+    - 若使用者不存在或已啟用 (is_active=True)，靜默返回，不暴露帳號是否存在。
+    - 若最近一次寄送在 min_interval_minutes 以內，拋出 VerificationEmailRateLimitedError，
+      交由上層決定回應內容（例如「請稍後再試」）。
+    - 其他情況則重新發一封，底層仍使用 send_signup_verification_for_user。
+    """
+    # 1) 找出該 Email 的使用者
+    user = db.query(User).filter(User.email == email).first()
+    if user is None or user.is_active:
+        # 為避免帳號存在性被探測，這裡直接靜默返回
+        return
+
+    # 2) 檢查最近一次寄送時間，做簡單的 rate limit
+    latest = _get_latest_token_for_user(
+        db=db,
+        user_id=user.id,
+        purpose=VerificationPurpose.SIGNUP,
+    )
+
+    if latest is not None:
+        now = _utcnow()
+        if latest.created_at + timedelta(minutes=min_interval_minutes) > now:
+            raise VerificationEmailRateLimitedError(
+                "驗證信寄送過於頻繁，請稍後再試。"
+            )
+
+    # 3) 寄出新的驗證信（內部會建立新的 token）
+    send_signup_verification_for_user(
+        db=db,
+        user=user,
+        request=request,
+    )
