@@ -269,7 +269,7 @@ def resend_verification(
 @router.post("/login")
 def login(
     body: LoginIn,
-    request: Request,          # ← 新增：需要 Request 來組驗證網址
+    request: Request,          # 要有 Request
     response: Response,
     db: OrmSession = Depends(get_db),
 ):
@@ -285,26 +285,21 @@ def login(
         _raise_400({"credentials": "帳號或密碼錯誤。"})
 
     # 2-1. 帳號存在但尚未完成 Email 驗證：
-    #      先嘗試根據最近一筆 signup token 做 1 分鐘冷卻的重寄信，
-    #      被 rate limit 則靜默忽略，最後一律回同一個錯誤訊息。
+    #      嘗試重寄驗證信（1 分鐘冷卻），之後一律回同樣的錯誤訊息
     if not user.is_active:
         try:
-            # 內部會：
-            # - 用 user.id 查出最新一筆 purpose="signup" 的 token
-            # - 若 token 建立時間超過 1 分鐘，就建立新 token 並寄驗證信
-            # - 若不到 1 分鐘，丟出 VerificationEmailRateLimitedError
             resend_signup_verification_for_email(
                 db=db,
                 email=user.email,
                 request=request,
             )
         except VerificationEmailRateLimitedError:
-            # 冷卻中：這裡不再往外丟錯，只是不重寄信
+            # 冷卻中就不重寄，但錯誤訊息仍然一樣
             pass
 
         _raise_400({"email": "Email 尚未驗證，請先完成信箱驗證。"})
 
-    # 3. 建立新的 session 紀錄（使用 ORM）
+    # 3. 建立新的 session 紀錄
     now = datetime.now(timezone.utc)
     ttl = timedelta(minutes=SESSION_EXPIRES_MINUTES)
     expires_at = now + ttl

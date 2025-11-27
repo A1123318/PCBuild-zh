@@ -349,71 +349,33 @@
             data = null;
           }
 
-          if (!resp.ok) {
-            let msg = "登入失敗，請稍後再試。";
+            if (!resp.ok) {
+            const errors = (data && data.detail && data.detail.errors) || {};
+            const emailError = String(errors.email || "");
 
-            // 依你的需求：輸入無效帳號或密碼，一律顯示「帳號或密碼錯誤」
-            if (resp.status === 400 || resp.status === 401) {
-              msg = "帳號或密碼錯誤。";
-
-              if (
-                (resp.status === 400 || resp.status === 401) &&
-                data &&
-                data.detail &&
-                typeof data.detail === "object"
-              ) {
-                const errors = data.detail.errors || {};
-                const globalMessages = [];
-
-                Object.entries(errors).forEach(([field, rawMsg]) => {
-                  const fieldMsg = String(rawMsg || "");
-
-                  switch (field) {
-                    case "email":
-                      setFieldError(emailField, fieldMsg);
-                      break;
-
-                    case "password":
-                      setFieldError(passwordField, fieldMsg);
-                      break;
-
-                    // 帳號或密碼錯誤：兩欄一起標紅
-                    case "credentials":
-                      setFieldError(emailField, fieldMsg);
-                      setFieldError(passwordField, fieldMsg);
-                      globalMessages.push(fieldMsg);
-                      break;
-
-                    // 帳號停用：兩欄一起標紅，顯示停用訊息
-                    case "account":
-                      setFieldError(emailField, fieldMsg);
-                      setFieldError(passwordField, fieldMsg);
-                      globalMessages.push(fieldMsg);
-                      break;
-
-                    // 通用全域錯誤
-                    case "_global":
-                      globalMessages.push(fieldMsg);
-                      break;
-
-                    default:
-                      globalMessages.push(fieldMsg);
-                      break;
-                  }
-                });
-
-                if (globalMessages.length > 0) {
-                  msg = globalMessages.join(" ");
-                } else {
-                  msg = "請修正紅色標示的欄位。";
-                }
-              }
+            // 1. 特殊處理：Email 尚未驗證 → 直接導到驗證說明頁
+            if (emailError.includes("Email 尚未驗證")) {
+              // 後端此時已經幫你判斷是否超過 1 分鐘並視情況重寄驗證信，
+              // 前端只負責帶著現有 session cookie 進入說明頁
+              window.location.href = "/verify-email-pending.html";
+              return;
             }
 
-            errorEl.textContent = msg;
+            // 2. 其他錯誤維持原本行為（顯示在頁面上）
+            if (errors.email) {
+              setFieldError(emailField, emailError);
+            }
+            if (errors.credentials) {
+              // 帳號或密碼錯誤
+              errorEl.textContent = String(errors.credentials || "");
+            } else if (!errorEl.textContent) {
+              errorEl.textContent = "登入失敗，請稍後再試。";
+            }
+
             console.error("Login error:", resp.status, data);
             return;
           }
+
 
           // 登入成功：session cookie 已設定，導回首頁
           window.location.href = "/";
