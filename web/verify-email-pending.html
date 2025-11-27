@@ -206,6 +206,7 @@
           } else {
             messageEl.textContent =
               "我們已將驗證信寄送到您註冊時填寫的電子郵件信箱。";
+              startCooldown(); // 直接啟動冷卻，避免使用者馬上重複點擊
           }
         } catch (err) {
           console.error("loadCurrentUser failed:", err);
