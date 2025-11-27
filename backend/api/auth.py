@@ -97,6 +97,7 @@ def get_me(current_user: User = Depends(get_current_user)) -> MeOut:
         email=current_user.email,
         username=current_user.username,
         is_admin=current_user.is_admin,
+        is_active=current_user.is_active,
         created_at=current_user.created_at,
     )
 
