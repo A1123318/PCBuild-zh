@@ -35,7 +35,7 @@ def _raise_400(errors: dict[str, str]) -> None:
     )
 
 
-# ===== 目前登入使用者依賴 =====
+# ===== 目前登入(未驗證)使用者依賴 =====
 
 def get_current_user(
     request: Request,
@@ -86,6 +86,24 @@ def get_current_user(
         )
 
     return user
+
+
+# ===== 取得已啟用使用者依賴 =====
+def get_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    僅允許「已登入且已完成 Email 驗證」的使用者通過。
+
+    - 未登入：get_current_user 會先拋出 401
+    - 已登入但尚未完成 Email 驗證：拋出 403
+    """
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email 尚未驗證，請先完成信箱驗證。",
+        )
+    return current_user
 
 
 # ===== 取得目前登入使用者 =====

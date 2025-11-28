@@ -59,7 +59,7 @@
     display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end;
     border: 1px solid var(--border); border-radius: 12px; padding: 10px;
   }
-  #msg {
+  #chat-input {
     width: 100%;
     min-height: 52px;
     height: auto;                   /* JS 動態高度 */
@@ -71,12 +71,17 @@
     border: 1px solid var(--border); border-radius: 8px;
     box-sizing: border-box;
   }
-  #send {
+  #chat-send-btn {
     align-self: end;                /* 底對齊 */
     font-size: 14px; padding: 10px 14px; height: 40px;
     border-radius: 10px; border: 1px solid var(--border);
     background: color-mix(in srgb, CanvasText 5%, Canvas);
     cursor: pointer;
+  }
+  .form-hint {
+    margin-top: 8px;
+    font-size: 13px;
+    color: color-mix(in srgb, CanvasText 60%, Canvas);
   }
 
   /* 新增：頂部註冊 / 登入列 */
@@ -122,10 +127,11 @@
 
 <div class="composer-wrap">
   <div class="composer">
-    <textarea id="msg" placeholder="輸入訊息…" aria-label="訊息輸入"></textarea>
-    <button id="send" aria-label="送出訊息">送出</button>
+    <textarea id="chat-input" placeholder="輸入訊息…" aria-label="訊息輸入"></textarea>
+    <button id="chat-send-btn" aria-label="送出訊息">送出</button>
   </div>
 </div>
+<div id="chat-hint" class="form-hint"></div>
 
 <!-- Markdown 解析＋XSS 安全消毒（CDN） -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -134,8 +140,9 @@
 <script>
 const API = "/api/chat";
 const log = document.getElementById('log');
-const msg = document.getElementById('msg');
-const sendBtn = document.getElementById('send');
+const chatInput = document.getElementById('chat-input');
+const chatSendBtn = document.getElementById('chat-send-btn');
+const chatHint = document.getElementById('chat-hint');
 const topBarActions = document.getElementById('top-bar-actions');
 
 marked.setOptions({ gfm: true, breaks: true, headerIds: false, mangle: false });
@@ -169,15 +176,20 @@ function appendMarkdown(who, md, inline=false) {
 /* 自動增高維持你原本版本 */
 function autoResize() {
   const maxPx = Math.floor(window.innerHeight * 0.40);
-  const minPx = parseFloat(getComputedStyle(msg).minHeight) || 52;
-  msg.style.height = 'auto';
-  const h = Math.min(msg.scrollHeight, maxPx);
-  msg.style.height = Math.max(h, minPx) + 'px';
-  msg.style.overflowY = (msg.scrollHeight > maxPx) ? 'auto' : 'hidden';
+  const minPx = parseFloat(getComputedStyle(chatInput).minHeight) || 52;
+  chatInput.style.height = 'auto';
+  const h = Math.min(chatInput.scrollHeight, maxPx);
+  chatInput.style.height = Math.max(h, minPx) + 'px';
+  chatInput.style.overflowY = (chatInput.scrollHeight > maxPx) ? 'auto' : 'hidden';
 }
 
 async function send() {
-  const m = msg.value.trim();
+  if (!chatEnabled) {
+    configureChatForGuest();
+    return;
+  }
+
+  const m = chatInput.value.trim();
   if (!m) return;
 
   // UI 先顯示
@@ -189,10 +201,10 @@ async function send() {
     history: history.slice(-HISTORY_LIMIT)   // 注意：role 必須是 "user" 或 "ai"
   };
 
-  msg.value = '';
+  chatInput.value = '';
   autoResize();
-  msg.focus();
-  sendBtn.disabled = true;
+  chatInput.focus();
+  chatSendBtn.disabled = true;
 
   try {
     const r = await fetch(API, {
@@ -217,7 +229,66 @@ async function send() {
   } catch (e) {
     appendMarkdown('ai', `發生錯誤：\`${String(e)}\``, false);
   } finally {
-    sendBtn.disabled = false;
+    chatSendBtn.disabled = false;
+  }
+}
+
+let chatEnabled = false;
+
+function configureChatForGuest() {
+  chatEnabled = false;
+
+  if (chatInput) {
+    chatInput.value = '';
+    chatInput.disabled = true;
+    chatInput.placeholder = "要使用 AI 聊天與配單功能，請先登入或註冊帳號。";
+  }
+  if (chatSendBtn) {
+    chatSendBtn.disabled = true;
+  }
+  if (chatHint) {
+    chatHint.textContent = "您目前尚未登入，無法使用 AI 聊天功能。請先登入或註冊帳號。";
+  }
+}
+
+function configureChatForActiveUser() {
+  chatEnabled = true;
+
+  if (chatInput) {
+    chatInput.disabled = false;
+    chatInput.placeholder = "請輸入想詢問的配單需求或問題…";
+  }
+  if (chatSendBtn) {
+    chatSendBtn.disabled = false;
+  }
+  if (chatHint) {
+    chatHint.textContent = '';
+  }
+}
+
+async function initHomeAuthGuard() {
+  try {
+    const resp = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "same-origin",
+    });
+
+    if (!resp.ok) {
+      configureChatForGuest();
+      return;
+    }
+
+    const data = await resp.json();
+
+    if (data && data.is_active === false) {
+      window.location.href = "/verify-email-pending.html";
+      return;
+    }
+
+    configureChatForActiveUser();
+  } catch (err) {
+    console.error("initHomeAuthGuard failed:", err);
+    configureChatForGuest();
   }
 }
 
@@ -268,18 +339,20 @@ async function loadAuthState() {
 }
 
 
-sendBtn.onclick = send;
+chatSendBtn.onclick = send;
 /* Enter 送出；Shift+Enter 換行 */
-msg.addEventListener('keydown', (e) => {
+chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     send();
   }
 });
-msg.addEventListener('input', autoResize);
+chatInput.addEventListener('input', autoResize);
 window.addEventListener('resize', autoResize);
 document.addEventListener('DOMContentLoaded', () => {
+  configureChatForGuest();
   autoResize();
+  initHomeAuthGuard();
   loadAuthState();
 });
 </script>
