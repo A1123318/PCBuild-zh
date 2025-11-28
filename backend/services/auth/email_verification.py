@@ -8,7 +8,7 @@ from enum import Enum
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
 from sqlalchemy.orm import Session
 
-from backend.models import User, EmailVerificationToken, VerificationPurpose
+from backend.models import User, EmailVerificationToken
 from backend.services.email.client import send_signup_verification_email
 
 from fastapi import Request
