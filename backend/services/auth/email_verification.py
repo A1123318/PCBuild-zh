@@ -8,7 +8,7 @@ from enum import Enum
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
 from sqlalchemy.orm import Session
 
-from backend.models import User, EmailVerificationToken
+from backend.models import User, EmailVerificationToken, VerificationPurpose
 from backend.services.email.client import send_signup_verification_email
 
 from fastapi import Request
@@ -250,24 +250,44 @@ def verify_signup_token_and_activate_user(
     註冊流程專用：驗證 token + 啟用帳號。
 
     - 使用通用 consume_verification_token(...) 確認 token
-    - 標記 token 已使用
-    - 將 user.is_active 設為 True
-    - 由此函式一次 commit，確保兩者同一個 transaction
+    - 啟用 user.is_active
+    - 將該使用者所有「註冊用途」的驗證 token 一次標記為已使用
+    - 由此函式一次 commit，確保變更在同一個 transaction 中完成
     """
+
+    # 這一步會：
+    # - 驗證 public_token（比對雜湊、用途、未過期、未使用等）
+    # - 標記「這一筆」 token 為已使用
     user, token = consume_verification_token(
         db=db,
         public_token=public_token,
         purpose=VerificationPurpose.SIGNUP,
     )
 
+    # 啟用帳號
     user.is_active = True
 
+    # 失效同一個使用者、同一用途(SIGNUP) 的所有 token（包含目前這一筆）
+    token_model = type(token)
+    (
+        db.query(token_model)
+        .filter(
+            token_model.user_id == user.id,
+            token_model.purpose == VerificationPurpose.SIGNUP,
+        )
+        .update(
+            {"is_used": True},
+            synchronize_session=False,
+        )
+    )
+
+    # user 狀態變更 + token 失效一起 commit
     db.add(user)
-    db.add(token)
     db.commit()
     db.refresh(user)
 
     return user
+
 
 def send_signup_verification_for_user(
     db: Session,
