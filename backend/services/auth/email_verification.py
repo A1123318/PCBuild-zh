@@ -17,17 +17,28 @@ from fastapi import Request
 class VerificationPurpose(str, Enum):
     """驗證碼用途（目前只用到 SIGNUP，未來可擴充 LOGIN 等）。"""
     SIGNUP = "signup"
+    PASSWORD_RESET = "password_reset"
     # 未來要做登入驗證可新增：
     # LOGIN = "login"
 
 
-# 各用途預設有效時間（小時）
-DEFAULT_LIFETIME_HOURS: dict[VerificationPurpose, int] = {
-    VerificationPurpose.SIGNUP: 24,
+# 各用途預設有效時間（分鐘）
+# 後面計算 expires_at 一律直接用這裡的分鐘數。
+DEFAULT_LIFETIME_MINUTES: dict[VerificationPurpose, int] = {
+    # 註冊驗證：24 小時
+    VerificationPurpose.SIGNUP: 24 * 60,
+    # 忘記密碼：20 分鐘
+    VerificationPurpose.PASSWORD_RESET: 20,
 }
 
-# 重新寄送驗證信的最小間隔（分鐘）
-RESEND_MIN_INTERVAL_MINUTES = 1
+# 各用途重新寄送驗證信 / 重設密碼信的最小間隔（分鐘）
+# 之後 rate limit 判斷一律從這裡取值。
+RESEND_MIN_INTERVAL_MINUTES: dict[VerificationPurpose, int] = {
+    # 註冊驗證信：1 分鐘冷卻
+    VerificationPurpose.SIGNUP: 1,
+    # 忘記密碼信：1 分鐘冷卻（之後若要調整再改這裡即可）
+    VerificationPurpose.PASSWORD_RESET: 1,
+}
 
 
 class VerificationEmailRateLimitedError(Exception):
@@ -85,13 +96,20 @@ def _split_public_token(public_token: str) -> tuple[int, str]:
     return token_id, secret
 
 
-def _resolve_lifetime_hours(
+def _resolve_lifetime_minutes(
     purpose: VerificationPurpose,
-    override_hours: int | None,
+    override_minutes: int | None,
 ) -> int:
-    if override_hours is not None:
-        return override_hours
-    return DEFAULT_LIFETIME_HOURS[purpose]
+    """
+    依用途取得此類驗證碼的有效時間（以分鐘為單位）。
+
+    - 若有傳入 override_minutes，優先採用傳入值
+    - 否則使用 DEFAULT_LIFETIME_MINUTES[purpose]
+    """
+    if override_minutes is not None:
+        return override_minutes
+    return DEFAULT_LIFETIME_MINUTES[purpose]
+
 
 
 def _get_latest_token_for_user(
@@ -120,22 +138,21 @@ def issue_verification_token(
     user: User,
     *,
     purpose: VerificationPurpose,
-    expires_in_hours: int | None = None,
+    expires_in_minutes: int | None = None,
 ) -> str:
     """
     發行驗證碼（通用版本）。
 
     - 依 purpose 決定存入的用途欄位
-    - 支援自訂 expires_in_hours，未指定時使用 DEFAULT_LIFETIME_HOURS
+    - 支援自訂 expires_in_minutes，未指定時使用 DEFAULT_LIFETIME_MINUTES
     - 回傳給使用者的 public token 格式為 "<id>.<secret>"
     """
-    lifetime_hours = _resolve_lifetime_hours(purpose, expires_in_hours)
+    lifetime_minutes = _resolve_lifetime_minutes(purpose, expires_in_minutes)
 
     secret = secrets.token_urlsafe(32)
     token_hash = _hash_token(secret)
-
     now = _utcnow()
-    expires_at = now + timedelta(hours=lifetime_hours)
+    expires_at = now + timedelta(minutes=lifetime_minutes)
 
     token = EmailVerificationToken(
         user_id=user.id,
@@ -145,7 +162,6 @@ def issue_verification_token(
         created_at=now,
         expires_at=expires_at,
     )
-
     db.add(token)
     db.commit()
     db.refresh(token)
@@ -226,19 +242,19 @@ def issue_signup_verification_token(
     db: Session,
     user: User,
     *,
-    expires_in_hours: int | None = None,
+    expires_in_minutes: int | None = None,
 ) -> str:
     """
     註冊流程專用：發行 email 驗證碼。
 
-    未來要新增登入驗證碼時，只需呼叫 issue_verification_token(...)
-    並指定 purpose=VerificationPurpose.LOGIN 即可，無須重新實作底層流程。
+    未來要新增登入驗證碼、忘記密碼驗證碼時，只需呼叫
+    issue_verification_token(...) 並指定對應的 purpose 即可。
     """
     return issue_verification_token(
         db=db,
         user=user,
         purpose=VerificationPurpose.SIGNUP,
-        expires_in_hours=expires_in_hours,
+        expires_in_minutes=expires_in_minutes,
     )
 
 
@@ -328,17 +344,19 @@ def resend_signup_verification_for_email(
     email: str,
     *,
     request: Request,
-    min_interval_minutes: int = RESEND_MIN_INTERVAL_MINUTES,
 ) -> None:
     """
     依 Email 重新寄送註冊驗證信。
 
     設計重點：
     - 若使用者不存在或已啟用 (is_active=True)，靜默返回，不暴露帳號是否存在。
-    - 若最近一次寄送在 min_interval_minutes 以內，拋出 VerificationEmailRateLimitedError，
+    - 若最近一次寄送在該用途的最小間隔時間內，拋出 VerificationEmailRateLimitedError，
       交由上層決定回應內容（例如「請稍後再試」）。
     - 其他情況則重新發一封，底層仍使用 send_signup_verification_for_user。
     """
+    # 依用途取得冷卻時間（分鐘）
+    min_interval_minutes = RESEND_MIN_INTERVAL_MINUTES[VerificationPurpose.SIGNUP]
+
     # 1) 找出該 Email 的使用者
     user = db.query(User).filter(User.email == email).first()
     if user is None or user.is_active:
@@ -351,7 +369,6 @@ def resend_signup_verification_for_email(
         user_id=user.id,
         purpose=VerificationPurpose.SIGNUP,
     )
-
     if latest is not None:
         now = _utcnow()
         if latest.created_at + timedelta(minutes=min_interval_minutes) > now:
