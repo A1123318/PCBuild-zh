@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session as OrmSession
 from pydantic import EmailStr, TypeAdapter
 
 from backend.api.deps import get_db
-from backend.models import User, Session as SessionModel
-from backend.schemas.auth import RegisterIn, RegisterOut, LoginIn, MeOut, ResendVerificationIn
+from backend.models import User, Session as SessionModel, EmailVerificationToken
+from backend.schemas.auth import RegisterIn, RegisterOut, LoginIn, MeOut, ResendVerificationIn, ForgotPasswordIn
 from backend.security import hash_password, verify_password
 from backend.services.auth.email_verification import (
     send_signup_verification_for_user,
@@ -18,6 +18,8 @@ from backend.services.auth.email_verification import (
     InvalidOrExpiredTokenError,
     resend_signup_verification_for_email,
     VerificationEmailRateLimitedError,
+    send_password_reset_for_user,
+    VerificationPurpose,
 )
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -252,6 +254,73 @@ def verify_email(
     return resp
 
 
+# ===== 忘記密碼：從 Email 連結進入重設頁面 =====
+@router.get("/reset-password/{token}", name="reset_password")
+def reset_password_entry(
+    token: str,
+    db: OrmSession = Depends(get_db),
+):
+    """
+    忘記密碼 Email 連結入口。
+
+    依 token 狀態導向不同的前端頁面：
+    - 有效：   /reset-password.html?token=...
+    - 已使用： /reset-password-used.html
+    - 已過期： /reset-password-expired.html
+    - 格式錯誤或找不到：/reset-password-invalid.html
+    """
+
+    # 1. 先檢查 token 格式是否正確（<id>.<secret>）
+    try:
+        id_str, _ = token.split(".", 1)
+        token_id = int(id_str)
+    except (ValueError, AttributeError):
+        return RedirectResponse(
+            url="/reset-password-invalid.html",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    # 2. 查詢對應的 PASSWORD_RESET token
+    row = (
+        db.query(EmailVerificationToken)
+        .filter(
+            EmailVerificationToken.id == token_id,
+            EmailVerificationToken.purpose == VerificationPurpose.PASSWORD_RESET.value,
+        )
+        .first()
+    )
+
+    if row is None:
+        # 找不到資料：可能是無效 id 或已被清除，視為「無效 / 格式錯誤」
+        return RedirectResponse(
+            url="/reset-password-invalid.html",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    now = datetime.now(timezone.utc)
+
+    # 3. 已使用的 token
+    if row.is_used:
+        return RedirectResponse(
+            url="/reset-password-used.html",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    # 4. 已過期的 token
+    if row.expires_at < now:
+        return RedirectResponse(
+            url="/reset-password-expired.html",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    # 5. 其餘情況視為「有效」，導向前端重設密碼頁面
+    #    為了讓前端能在送出新密碼時帶回 token，這裡將 token 放在 query string
+    return RedirectResponse(
+        url=f"/reset-password.html?token={token}",
+        status_code=status.HTTP_302_FOUND,
+    )
+
+
 # ===== 重新寄送驗證信 =====
 @router.post("/resend-verification")
 def resend_verification(
@@ -280,6 +349,52 @@ def resend_verification(
         )
 
     # 3. 一律回傳成功（不暴露帳號是否存在或是否已驗證）
+    return {"ok": True}
+
+
+# ===== 忘記密碼：發送重設密碼信 =====
+@router.post("/forgot-password")
+def forgot_password(
+    body: ForgotPasswordIn,
+    request: Request,
+    db: OrmSession = Depends(get_db),
+):
+    """
+    忘記密碼入口：
+
+    - 一律回傳 200 + {"ok": True}（不暴露帳號是否存在 / 是否已啟用）
+    - 若 email 格式錯誤，回 400 提示使用者修正
+    - 若帳號存在且已啟用，才實際發 PASSWORD_RESET token 並寄信
+    - 若請求過於頻繁，回 429 告知稍後再試
+    """
+    # 1. 檢查 Email 格式（只檢查字串是否合法，不洩漏帳號存在與否）
+    try:
+        EMAIL_ADAPTER.validate_python(body.email)
+    except Exception:
+        _raise_400({"email": "Email 格式不正確。"})
+
+    # 2. 查詢使用者（不論結果，對外回應統一）
+    user = db.query(User).filter(User.email == body.email).first()
+
+    # 3. 帳號不存在或尚未驗證：不寄信，直接回固定成功
+    if not user or not user.is_active:
+        return {"ok": True}
+
+    # 4. 已啟用帳號：嘗試發行重設密碼 token + 寄信
+    try:
+        send_password_reset_for_user(
+            db=db,
+            user=user,
+            request=request,
+        )
+    except VerificationEmailRateLimitedError:
+        # 冷卻期間內：回 429，讓前端顯示「操作過於頻繁」
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"errors": {"email": "重設密碼請求太頻繁，請在 1 分鐘後再試。"}},
+        )
+
+    # 5. 一切正常：仍然只回固定成功結構，不提供帳號存不存在線索
     return {"ok": True}
 
 

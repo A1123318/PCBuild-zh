@@ -33,3 +33,7 @@ class MeOut(BaseModel):
 
 class ResendVerificationIn(BaseModel):
     email: str
+
+
+class ForgotPasswordIn(BaseModel):
+    email: str
