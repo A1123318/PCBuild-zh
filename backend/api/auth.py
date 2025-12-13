@@ -266,9 +266,9 @@ def reset_password_entry(
 
     依 token 狀態導向不同的前端頁面：
     - 有效：   /reset-password.html?token=...
-    - 已使用： /reset-password-used.html
-    - 已過期： /reset-password-expired.html
-    - 格式錯誤或找不到：/reset-password-invalid.html
+    - 已使用： /reset-password-failed.html?reason=used
+    - 已過期： /reset-password-failed.html?reason=expired
+    - 格式錯誤或找不到：/reset-password-failed.html?reason=invalid
     """
 
     # 1. 先檢查 token 格式是否正確（<id>.<secret>）
@@ -277,7 +277,7 @@ def reset_password_entry(
         token_id = int(id_str)
     except (ValueError, AttributeError):
         return RedirectResponse(
-            url="/reset-password-invalid.html",
+            url="/reset-password-failed.html?reason=invalid",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -294,7 +294,7 @@ def reset_password_entry(
     if row is None:
         # 找不到資料：可能是無效 id 或已被清除，視為「無效 / 格式錯誤」
         return RedirectResponse(
-            url="/reset-password-invalid.html",
+            url="/reset-password-failed.html?reason=invalid",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -303,14 +303,14 @@ def reset_password_entry(
     # 3. 已使用的 token
     if row.is_used:
         return RedirectResponse(
-            url="/reset-password-used.html",
+            url="/reset-password-failed.html?reason=used",
             status_code=status.HTTP_302_FOUND,
         )
 
     # 4. 已過期的 token
     if row.expires_at < now:
         return RedirectResponse(
-            url="/reset-password-expired.html",
+            url="/reset-password-failed.html?reason=expired",
             status_code=status.HTTP_302_FOUND,
         )
 
