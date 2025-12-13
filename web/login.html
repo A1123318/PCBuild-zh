@@ -75,10 +75,13 @@
       }
       .actions-row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
         gap: 8px;
         margin-top: 4px;
+        width: 100%;
+      }
+      .actions-row .btn-link {
+        margin-right: auto; /* 把左側連結推到最左，登入按鈕自然到最右 */
       }
       button {
         font-family: inherit;
@@ -197,12 +200,8 @@
           </label>
 
           <div class="actions-row">
-            <a id="forgot-btn" class="btn-link" href="/forgot-password.html">
-              忘記密碼？
-            </button>
-            <button type="submit" id="login-btn" class="btn-primary">
-              登入
-            </button>
+            <a id="forgot-btn" class="btn-link" href="/forgot-password.html">忘記密碼？</a>
+            <button type="submit" id="login-btn" class="btn-primary">登入</button>
           </div>
 
           <p class="hint">
@@ -224,8 +223,7 @@
       const passwordInput = document.getElementById("password");
       const loginBtn = document.getElementById("login-btn");
       const errorEl = document.getElementById("error");
-      const forgotBtn = document.getElementById("forgot-btn");
-            const emailField = document.querySelector('[data-field="email"]');
+      const emailField = document.querySelector('[data-field="email"]');
       const passwordField = document.querySelector('[data-field="password"]');
 
       function clearFieldErrors() {
