@@ -205,7 +205,6 @@ def register(
     )
 
 
-
 # ===== Email Verification =====
 @router.get("/verify-email/{token}", name="verify_email")
 def verify_email(
@@ -213,11 +212,11 @@ def verify_email(
     db: OrmSession = Depends(get_db),
 ):
     """
-    註冊 email 驗證入口。
+    註冊 email 驗證入口：
 
     - 驗證 token，啟用帳號
-    - 驗證成功後自動建立 session
-    - 設定 HttpOnly Cookie，然後 302 導回首頁 (/)
+    - 不自動登入
+    - 導向「驗證成功」頁面，提供前往登入的指引
     """
     try:
         user = verify_signup_token_and_activate_user(
@@ -230,31 +229,26 @@ def verify_email(
             status_code=status.HTTP_302_FOUND,
         )
 
-    # === 建立新的 session（沿用 login 的邏輯） ===
-    now = datetime.now(timezone.utc)
-    ttl = timedelta(minutes=SESSION_EXPIRES_MINUTES)
-    expires_at = now + ttl
-
-    session = SessionModel(
-        id=uuid4(),
-        user_id=user.id,
-        expires_at=expires_at,
+    # 重要：避免「驗證後仍保持登入狀態」
+    # 直接撤銷該使用者所有 session（包含註冊時建立的未啟用 session）
+    db.query(SessionModel).filter(SessionModel.user_id == user.id).update(
+        {"revoked": True},
+        synchronize_session=False,
     )
-    db.add(session)
     db.commit()
 
-    # === 建立 RedirectResponse，並在上面設定 Cookie ===
-    resp = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    # 導向成功頁，並清除瀏覽器端 cookie（若使用者當下裝置有帶 cookie）
+    resp = RedirectResponse(url="/verify-email-success.html", status_code=status.HTTP_302_FOUND)
     resp.set_cookie(
         key=SESSION_COOKIE_NAME,
-        value=str(session.id),
-        max_age=int(ttl.total_seconds()),
+        value="",
+        max_age=0,
+        expires=0,
         httponly=True,
         secure=True,
         samesite="Lax",
         path="/",
     )
-
     return resp
 
 
