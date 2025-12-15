@@ -520,8 +520,8 @@ def login(
         except VerificationEmailRateLimitedError:
             pass
 
-        # 3-3 一律回 400，前端根據這個錯誤導到驗證頁面
-        _raise_400({"email": "Email 尚未驗證，請先完成信箱驗證。"})
+        # 3-3 不丟錯：允許登入，但前端會依 /me 的 is_active=false 進入「受限模式」
+        return {"ok": True, "needs_verification": True}
 
     # 4. 已啟用帳號：正常登入流程
     now = datetime.now(timezone.utc)

@@ -185,7 +185,11 @@ function autoResize() {
 
 async function send() {
   if (!chatEnabled) {
-    configureChatForGuest();
+    if (chatMode === "unverified") {
+      configureChatForUnverifiedUser();
+    } else {
+      configureChatForGuest();
+    }
     return;
   }
 
@@ -234,8 +238,11 @@ async function send() {
 }
 
 let chatEnabled = false;
+let chatMode = "guest"; // guest | unverified | active
 
+// 未登入使用者的聊天介面設定
 function configureChatForGuest() {
+  chatMode = "guest";
   chatEnabled = false;
 
   if (chatInput) {
@@ -251,7 +258,28 @@ function configureChatForGuest() {
   }
 }
 
+// 未驗證使用者的聊天介面設定
+function configureChatForUnverifiedUser() {
+  chatMode = "unverified";
+  chatEnabled = false;
+
+  if (chatInput) {
+    chatInput.value = '';
+    chatInput.disabled = true;
+    chatInput.placeholder = "帳號尚未完成 Email 驗證，完成驗證後才能使用 AI 聊天功能。";
+  }
+  if (chatSendBtn) {
+    chatSendBtn.disabled = true;
+  }
+  if (chatHint) {
+    chatHint.textContent =
+      "您的帳號尚未完成 Email 驗證。請點擊右上角「尚未驗證」前往驗證資訊頁面。";
+  }
+}
+
+// 已啟用使用者的聊天介面設定
 function configureChatForActiveUser() {
+  chatMode = "active";
   chatEnabled = true;
 
   if (chatInput) {
@@ -281,7 +309,7 @@ async function initHomeAuthGuard() {
     const data = await resp.json();
 
     if (data && data.is_active === false) {
-      window.location.href = "/verify-email-pending.html";
+      configureChatForUnverifiedUser();
       return;
     }
 
@@ -298,7 +326,6 @@ async function loadAuthState() {
   try {
     const resp = await fetch("/api/auth/me", {
       method: "GET",
-      // same-origin 預設會帶 Cookie，不寫也可以，這裡只是明示
       credentials: "same-origin",
     });
 
@@ -310,28 +337,43 @@ async function loadAuthState() {
     const data = await resp.json();
     const username = data.username || data.email || "User";
 
-    // 已登入 → 顯示使用者名稱 + 登出按鈕
-    topBarActions.innerHTML = `
-      <span style="margin-right: 8px; font-size: 14px;">歡迎，${username}</span>
-      <button id="logout-btn" class="top-bar__button" type="button">登出</button>
-    `;
+    // 已登入 → 顯示使用者名稱 + （未驗證 badge）+ 登出按鈕
+    topBarActions.textContent = "";
 
-    const logoutBtn = document.getElementById("logout-btn");
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", async () => {
-        try {
-          const resp = await fetch("/api/auth/logout", {
-            method: "POST",
-            credentials: "same-origin",
-          });
-          // 無論成功失敗，都重新整理畫面（Cookie 會在成功時被清除）
-          window.location.href = "/";
-        } catch (e) {
-          // 網路異常也直接刷新，避免卡在錯狀態
-          window.location.href = "/";
-        }
-      });
+    const welcome = document.createElement("span");
+    welcome.style.marginRight = "8px";
+    welcome.style.fontSize = "14px";
+    welcome.textContent = `歡迎，${username}`;
+    topBarActions.appendChild(welcome);
+
+    // 未驗證：右上角顯示「尚未驗證」，可點進驗證資訊頁
+    if (data && data.is_active === false) {
+      const badge = document.createElement("a");
+      badge.className = "top-bar__button";
+      badge.href = "/verify-email-pending.html";
+      badge.textContent = "尚未驗證";
+      badge.title = "前往 Email 驗證與重新寄送驗證信";
+      topBarActions.appendChild(badge);
     }
+
+    const logoutBtn = document.createElement("button");
+    logoutBtn.id = "logout-btn";
+    logoutBtn.className = "top-bar__button";
+    logoutBtn.type = "button";
+    logoutBtn.textContent = "登出";
+    topBarActions.appendChild(logoutBtn);
+
+    // 直接綁在剛建立的元素上（避免再 getElementById 重複宣告）
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+      } finally {
+        window.location.href = "/";
+      }
+    });
   } catch (e) {
     // /api/auth/me 呼叫失敗時忽略，維持「未登入」狀態
     console.error("loadAuthState error:", e);

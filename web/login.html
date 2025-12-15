@@ -347,13 +347,7 @@
                   (data && data.detail && data.detail.errors) ? data.detail.errors : {};
                 const emailError = String(errors.email || "");
 
-                // 1. 特殊情況：Email 尚未驗證 → 直接導向驗證說明頁
-                if (emailError.includes("Email 尚未驗證")) {
-                  window.location.href = "/verify-email-pending.html";
-                  return;
-                }
-
-                // 2. 其他錯誤照舊顯示在畫面上
+                // 顯示欄位錯誤
                 if (errors.email) {
                   setFieldError(emailField, emailError);
                 }
