@@ -126,7 +126,7 @@
       </div>
 
       <div class="back-home">
-        已完成驗證？<a href="/">回到首頁</a>
+        已完成驗證？<a href="/login.html">前往登入</a>
       </div>
     </div>
 
@@ -223,9 +223,9 @@
       function showAlreadyVerified() {
         userIsActive = true;
         messageEl.textContent =
-          "您的帳號已完成 Email 驗證，可以直接回首頁開始使用 PCBuild。";
+          "您的帳號已完成 Email 驗證。請前往登入頁面重新登入後開始使用 PCBuild。";
         hintText.textContent =
-          "您可以關閉此頁面，或點擊下方「回到首頁」連結。";
+          "請點擊下方「前往登入」連結進行登入，或直接關閉此頁面。";
         remaining = 0;
         if (timerId !== null) {
           clearInterval(timerId);
@@ -245,9 +245,9 @@
           if (!resp.ok) {
             // 例如 401：沒有有效 session，提示使用者需要重新註冊 / 登入
             messageEl.textContent =
-              "目前尚未登入，無法重新寄送驗證信。請重新完成註冊流程，或登入後再試。";
+              "目前尚未登入，無法重新寄送驗證信。請先登入後再試。";
             hintText.textContent =
-              "如果您已完成驗證，請回到首頁重新整理頁面。";
+              "如果您已完成 Email 驗證，請前往登入頁面重新登入。";
             email = "";
             userIsActive = false;
             updateButton();
@@ -265,9 +265,7 @@
           }
 
           messageEl.textContent =
-            "您的帳號尚未完成 Email 驗證。請至註冊信箱開啟驗證信並完成驗證。若未收到或信件已過期，可使用下方按鈕重新寄送（每次間隔 60 秒）。";
-          hintText.textContent =
-            "重新寄送不會在此頁顯示成功或失敗，但按鈕會依冷卻時間暫停。";
+            "您的帳號尚未完成 Email 驗證。請至註冊信箱開啟驗證信並完成驗證。完成驗證後，請前往登入頁面重新登入。若未收到或信件已過期，可使用下方按鈕重新寄送（每次間隔 60 秒）。";
 
           // 若使用者是從首頁點「尚未驗證」進來，這裡會讀到 sessionStorage 並開始倒數
           loadPersistedCooldown();
