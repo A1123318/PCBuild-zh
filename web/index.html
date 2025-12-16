@@ -346,55 +346,79 @@ async function loadAuthState() {
 
     topBarActions.textContent = "";
 
+    // 已登入 → 顯示使用者名稱 +（尚未驗證連結）+ 登出按鈕
+    topBarActions.textContent = "";
+
+    // 把「歡迎文字」與「尚未驗證」放同一個區塊（上下排列）
     const userBlock = document.createElement("div");
-    userBlock.className = "top-bar__user";
+    userBlock.style.display = "flex";
+    userBlock.style.flexDirection = "column";
+    userBlock.style.alignItems = "flex-end";
+    userBlock.style.gap = "4px";
+    userBlock.style.marginRight = "12px";
 
     const welcome = document.createElement("span");
     welcome.style.fontSize = "14px";
     welcome.textContent = `歡迎，${username}`;
     userBlock.appendChild(welcome);
 
-    // 未驗證：顯示紅色文字連結（在 welcome 下方）
+    // 未驗證：顯示紅色超連結（在歡迎文字下方）
+    // 點擊後：先嘗試重寄驗證信 + 寫入冷卻時間到 sessionStorage + 轉到 pending 頁
     if (data && data.is_active === false) {
+      const COOLDOWN_KEY = "pcbuild_verify_cooldown_until";
+      const DEFAULT_WAIT_SEC = 60;
+
       const verifyLink = document.createElement("a");
       verifyLink.href = "/verify-email-pending.html";
-      verifyLink.className = "top-bar__verify-link";
-      verifyLink.textContent = "尚未驗證";
-      verifyLink.title = "點擊前往驗證";
+      verifyLink.textContent = "尚未驗證（點此前往驗證）";
+      verifyLink.title = "前往 Email 驗證與重新寄送驗證信";
+      verifyLink.style.fontSize = "12px";
+      verifyLink.style.color = "#ff4d4f";
+      verifyLink.style.textDecoration = "underline";
 
       verifyLink.addEventListener("click", async (e) => {
         e.preventDefault();
 
-        // 點擊事件觸發一次重寄（避免純導頁 GET 產生寄信副作用）
+        // 如果同分頁已有冷卻中的時間戳，就不要重打 API，直接進 pending 讓它顯示倒數
+        let untilMs = 0;
         try {
-          const email = data.email || "";
-          if (email) {
-            const r = await fetch("/api/auth/resend-verification", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "same-origin",
-              body: JSON.stringify({ email }),
-            });
+          untilMs = parseInt(sessionStorage.getItem(COOLDOWN_KEY) || "0", 10) || 0;
+        } catch (_) {
+          untilMs = 0;
+        }
 
-            // 只用來做倒數（不顯示成功/失敗）
-            const retryAfter = parseInt(r.headers.get("Retry-After") || "", 10);
-            let waitSec = 0;
+        if (untilMs && Date.now() < untilMs) {
+          window.location.href = "/verify-email-pending.html";
+          return;
+        }
 
-            if (r.ok) {
-              waitSec = 60;
-            } else if (r.status === 429) {
-              waitSec = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60;
+        try {
+          const r = await fetch("/api/auth/resend-verification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({}), // 由後端用 session 判定 user，不放 email
+          });
+
+          // 成功或被 rate limit 時，寫入冷卻時間，讓 pending 頁一載入就能倒數
+          if (r.ok || r.status === 429) {
+            let waitSec = DEFAULT_WAIT_SEC;
+
+            if (r.status === 429) {
+              // 若後端有回 Retry-After，盡量尊重它（通常是秒數）
+              const ra = r.headers.get("Retry-After");
+              const n = ra ? parseInt(ra, 10) : NaN;
+              if (!Number.isNaN(n) && n > 0) waitSec = Math.min(n, 600);
             }
 
-            if (waitSec > 0) {
-              sessionStorage.setItem(
-                "pcbuild_verify_cooldown_until",
-                String(Date.now() + waitSec * 1000)
-              );
+            try {
+              sessionStorage.setItem(COOLDOWN_KEY, String(Date.now() + waitSec * 1000));
+            } catch (_) {
+              // sessionStorage 失敗就忽略（不影響轉導）
             }
           }
-        } catch (err) {
-          console.error("top bar resend failed:", err);
+        } catch (_) {
+          // 網路錯誤不阻擋轉導：不顯示成功/失敗，只讓使用者到 pending 頁再操作
         } finally {
           window.location.href = "/verify-email-pending.html";
         }

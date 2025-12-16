@@ -159,6 +159,15 @@
       let remaining = 0;
       let timerId = null;
       let userIsActive = false;
+      function getVerifyFlow() {
+        try {
+          return sessionStorage.getItem("pcbuild_verify_flow") === "signup"
+            ? "signup"
+            : "home";
+        } catch (e) {
+          return "home";
+        }
+      }
 
       function updateButton() {
         if (!email) {
@@ -236,27 +245,33 @@
         return Number.isFinite(n) && n > 0 ? n : null;
       }
 
-      // 已完成驗證時的統一顯示
+      // 已完成驗證時的統一顯示（依 flow 決定導引）
       function showAlreadyVerified() {
         userIsActive = true;
 
-        // 你描述的情境是「已登入狀態下完成驗證後刷新此頁」
-        // 因此此頁應引導回首頁（不要求重新登入）
-        setBackLink("home");
+        const flow = getVerifyFlow(); // signup / home
 
-        messageEl.textContent =
-          "您的帳號已完成 Email 驗證。您目前已登入，可回到首頁重新整理後開始使用。";
-        hintText.textContent =
-          "您可以關閉此頁面，或點擊下方「回到首頁」連結。";
+        messageEl.textContent = "您的帳號已完成 Email 驗證。";
+
+        if (flow === "signup") {
+          // 註冊流程：要求重新登入
+          hintText.textContent =
+            "為了更新帳號狀態，請點擊下方「前往登入」重新登入後開始使用。";
+          setBackLink("login");
+        } else {
+          // 已登入未驗證流程：直接回首頁
+          hintText.textContent =
+            "您目前已登入，可點擊下方「回到首頁」繼續使用。若首頁仍顯示「尚未驗證」，請回到首頁後重新整理一次。";
+          setBackLink("home");
+        }
 
         remaining = 0;
         if (timerId !== null) {
           clearInterval(timerId);
           timerId = null;
         }
-        try { sessionStorage.removeItem(COOLDOWN_KEY); } catch (e) {}
 
-        updateButton();
+        updateButton(); // 會把按鈕變成「已完成驗證」並禁用
       }
 
       // 從後端（已有 HttpOnly Cookie）取得目前登入的使用者資訊
@@ -289,16 +304,22 @@
             return;
           }
 
-          setBackLink("home");
+        const flow = getVerifyFlow();
 
+        if (flow === "signup") {
+          messageEl.textContent =
+            "您的帳號尚未完成 Email 驗證。請至註冊信箱開啟驗證信並完成驗證。完成驗證後，請前往登入頁面重新登入，以更新帳號狀態。若未收到或信件已過期，可使用下方按鈕重新寄送（每次間隔 60 秒）。";
+          setBackLink("login");
+        } else {
           messageEl.textContent =
             "您的帳號尚未完成 Email 驗證。請至註冊信箱開啟驗證信並完成驗證。完成驗證後，回到首頁重新整理即可開始使用。若未收到或信件已過期，可使用下方按鈕重新寄送（每次間隔 60 秒）。";
+          setBackLink("home");
+        }
 
-          hintText.textContent =
-            "如果在收件匣中找不到信件，請檢查垃圾郵件或促銷信件匣。";
+        hintText.textContent =
+          "若在收件匣中找不到信件，請檢查垃圾郵件或促銷信件匣。";
 
-          // 若使用者是從首頁點「尚未驗證」進來，這裡會讀到 sessionStorage 並開始倒數
-          loadPersistedCooldown();
+        loadPersistedCooldown();
 
         } catch (err) {
           console.error("loadCurrentUser failed:", err);

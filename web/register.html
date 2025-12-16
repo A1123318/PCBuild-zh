@@ -478,7 +478,13 @@
             // sessionStorage 不可用時忽略，不影響主要流程
           }
 
-          window.location.href = "/verify-email-pending.html";
+        // 註冊成功後（即將導向 pending 前）插入
+        try {
+          sessionStorage.setItem("pcbuild_verify_flow", "signup");
+        } catch (e) {}
+
+        // 然後照舊導向
+        window.location.href = "/verify-email-pending.html";
         } catch (err) {
           console.error("Register network error:", err);
           errorEl.textContent = "註冊失敗，請稍後再試。";
