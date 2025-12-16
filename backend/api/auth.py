@@ -210,6 +210,7 @@ def register(
 @router.get("/verify-email/{token}", name="verify_email")
 def verify_email(
     token: str,
+    request: Request,
     db: OrmSession = Depends(get_db),
 ):
     """
@@ -230,26 +231,56 @@ def verify_email(
             status_code=status.HTTP_302_FOUND,
         )
 
-    # 重要：避免「驗證後仍保持登入狀態」
-    # 直接撤銷該使用者所有 session（包含註冊時建立的未啟用 session）
+    # 若「當下這個瀏覽器」已登入且 session 屬於同一位使用者：保留登入狀態並導回首頁
+    raw = request.cookies.get(SESSION_COOKIE_NAME)
+    current_session = None
+
+    if raw:
+        try:
+            sid = UUID(raw)
+        except ValueError:
+            sid = None
+
+        if sid:
+            now = datetime.now(timezone.utc)
+            current_session = (
+                db.query(SessionModel)
+                .filter(
+                    SessionModel.id == sid,
+                    SessionModel.revoked.is_(False),
+                    SessionModel.expires_at > now,
+                )
+                .first()
+            )
+
+    is_logged_in_as_this_user = bool(current_session and current_session.user_id == user.id)
+
+    if is_logged_in_as_this_user:
+        # 已登入狀態完成驗證：不要撤銷 session、不要清 cookie
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+
+    # 否則（首次註冊常見：從信箱開連結、沒有有效 session）：要求重新登入
     db.query(SessionModel).filter(SessionModel.user_id == user.id).update(
         {"revoked": True},
         synchronize_session=False,
     )
     db.commit()
 
-    # 導向成功頁，並清除瀏覽器端 cookie（若使用者當下裝置有帶 cookie）
     resp = RedirectResponse(url="/verify-email-success.html", status_code=status.HTTP_302_FOUND)
-    resp.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value="",
-        max_age=0,
-        expires=0,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        path="/",
-    )
+
+    # 只有在「cookie 無效」時才清掉，避免誤登出「別的已登入使用者」
+    if raw and not current_session:
+        resp.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value="",
+            max_age=0,
+            expires=0,
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            path="/",
+        )
+
     return resp
 
 
