@@ -467,23 +467,32 @@
             return;
           }
 
-          // 3. 註冊成功：後端已建立帳號、寄出驗證信並寫入 HttpOnly Cookie
-          //    前端只需導向「請驗證電子郵件」說明頁，不在網址帶出任何 Email 或 token
-
-          // 設定 60 秒冷卻（讓 verify-email-pending.html 讀到後立刻啟動倒數）
-          try {
-            const until = Date.now() + 60 * 1000;
-            sessionStorage.setItem("pcbuild_verify_cooldown_until", String(until));
-          } catch (e) {
-            // sessionStorage 不可用時忽略，不影響主要流程
-          }
-
-        // 註冊成功後（即將導向 pending 前）插入
+        // 3. 註冊成功：後端已建立帳號、寄出驗證信並寫入 HttpOnly Cookie
+        //    前端只需導向「請驗證電子郵件」說明頁，不在網址帶出任何 Email 或 token
+        //
+        // Pending 頁 UX：用 sessionStorage 暫存必要資訊（不放 URL、不放 localStorage）。
+        // 注意：sessionStorage 可被 JS 讀取；為降低留存風險，只存短期且後續會清除。
         try {
-          sessionStorage.setItem("pcbuild_verify_flow", "signup");
-        } catch (e) {}
+          const now = Date.now();
 
-        // 然後照舊導向
+          // UI-only：供 Pending 頁「可刷新可恢復」用，不等同 token 有效期
+          const EXPIRES_IN_MINUTES = 30;
+
+          sessionStorage.setItem("pcbuild_verify_email", email);
+          sessionStorage.setItem(
+            "pcbuild_verify_email_expires_at",
+            String(now + EXPIRES_IN_MINUTES * 60 * 1000)
+          );
+
+          // 註冊流程進入 Pending：完成驗證後通常會引導去登入（後續 Pending/Success 會用到）
+          sessionStorage.setItem("pcbuild_verify_flow", "signup");
+
+          // 註冊當下後端已寄出驗證信：直接讓 Pending 頁顯示 60 秒冷卻倒數
+          sessionStorage.setItem("pcbuild_verify_cooldown_until", String(now + 60 * 1000));
+        } catch (e) {
+          // 若瀏覽器禁用 storage 或滿額，不影響註冊流程
+        }
+
         window.location.href = "/verify-email-pending.html";
         } catch (err) {
           console.error("Register network error:", err);
