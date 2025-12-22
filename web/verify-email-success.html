@@ -129,27 +129,27 @@
         const primary = document.getElementById("primary-action");
         const secondary = document.getElementById("secondary-action");
 
-        // 與你其他頁面一致的 flow key（若沒用到也不影響）
-        const FLOW_KEY = "pcbuild_verify_flow"; // "signup" | "home"
+        function showSecondary(show) {
+          if (!secondary) return;
+          secondary.style.display = show ? "" : "none";
+        }
 
         function apply(mode) {
           if (mode === "home") {
+            // 已登入同帳號驗證成功：只引導回首頁，不出現前往登入連結
             contentEl.textContent =
-              "Email 驗證成功。您目前已登入（同帳號）可直接回到首頁繼續使用。";
+              "Email 驗證成功。您目前已登入（同帳號），可直接回到首頁開始使用。";
             hintEl.textContent =
               "若首頁仍顯示「尚未驗證」，請回到首頁後重新整理一次。";
 
             primary.textContent = "回到首頁";
             primary.href = "/";
 
-            // 次要動作保留（不影響主要按鈕需求）
-            secondary.textContent = "前往登入";
-            secondary.href = "/login.html";
-            secondary.style.display = "";
+            showSecondary(false);
             return;
           }
 
-          // mode === "login"
+          // mode === "login"（註冊驗證成功）：維持原本「前往登入」引導
           contentEl.textContent =
             "Email 驗證成功。為了更新帳號狀態，請前往登入頁重新登入。";
           hintEl.textContent =
@@ -158,46 +158,30 @@
           primary.textContent = "前往登入";
           primary.href = "/login.html";
 
-          secondary.textContent = "回到首頁";
-          secondary.href = "/";
-          secondary.style.display = "";
+          // 次要：回首頁（保留）
+          if (secondary) {
+            secondary.textContent = "回到首頁";
+            secondary.href = "/";
+          }
+          showSecondary(true);
         }
 
-        function normalizeMode(v) {
-          const m = String(v || "").toLowerCase();
-          return m === "home" || m === "login" ? m : "";
-        }
-
-        // 1) 後端若有帶 mode=home/login，優先採用
         const params = new URLSearchParams(window.location.search);
-        let mode = normalizeMode(params.get("mode"));
+        let mode = (params.get("mode") || "").toLowerCase();
 
-        // 2) 若未帶 mode，嘗試用 sessionStorage flow 判斷（可選）
-        if (!mode) {
-          const flow = String(sessionStorage.getItem(FLOW_KEY) || "").toLowerCase();
-          if (flow === "home") mode = "home";
-          else if (flow === "signup") mode = "login";
-        }
-
-        // 3) 最後用 /api/auth/me 推斷：有登入且已 active -> home，否則 login
-        if (!mode) {
+        // 後端通常會帶 mode；若有人直接開此頁，才用 /api/auth/me 推斷
+        if (mode !== "home" && mode !== "login") {
           try {
             const resp = await fetch("/api/auth/me", {
               method: "GET",
               credentials: "same-origin",
             });
-
             if (resp.ok) {
               const data = await resp.json().catch(() => null);
-
-              // 你目前檔案原先就是用 is_active 推斷 :contentReference[oaicite:1]{index=1}
-              // 這裡維持相同假設：登入且 active => 視為「同帳號驗證完成」情境
               if (data && data.is_active === true) mode = "home";
             }
-          } catch (e) {
-            // ignore
-          }
-          if (!mode) mode = "login";
+          } catch (_) {}
+          if (mode !== "home") mode = "login";
         }
 
         apply(mode);

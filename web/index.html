@@ -378,6 +378,10 @@ async function loadAuthState() {
 
       verifyLink.addEventListener("click", async (e) => {
         e.preventDefault();
+          // 新增：標記這次是「已登入未驗證 → 從首頁進入驗證」流程
+        try {
+          sessionStorage.setItem("pcbuild_verify_flow", "home");
+        } catch (_) {}
 
         // 如果同分頁已有冷卻中的時間戳，就不要重打 API，直接進 pending 讓它顯示倒數
         let untilMs = 0;
