@@ -1,5 +1,6 @@
 # backend/api/auth.py
 import os
+import math
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4, UUID
 
@@ -453,9 +454,28 @@ def forgot_password(
     try:
         send_password_reset_for_user(db=db, user=user, request=request)
     except VerificationEmailRateLimitedError:
+        # 冷卻期間內：回 429，並用 Retry-After 提供「後端計算」的剩餘秒數
+        now = datetime.now(timezone.utc)
+        latest = (
+            db.query(EmailVerificationToken)
+            .filter(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.purpose == VerificationPurpose.PASSWORD_RESET.value,
+            )
+            .order_by(EmailVerificationToken.created_at.desc())
+            .first()
+        )
+
+        retry_after = RESEND_MIN_INTERVAL_SECONDS
+        if latest is not None:
+            wait_until = latest.created_at + timedelta(seconds=RESEND_MIN_INTERVAL_SECONDS)
+            remaining = (wait_until - now).total_seconds()
+            retry_after = max(1, int(math.ceil(remaining)))
+
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={"errors": {"email": "重設密碼請求太頻繁，請在 1 分鐘後再試。"}},
+            detail={"errors": {"_global": "重設密碼請求太頻繁，請稍後再試。"}},
+            headers={"Retry-After": str(retry_after)},
         )
 
     return {"ok": True}
