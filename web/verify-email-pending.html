@@ -208,7 +208,6 @@
       let isLoggedIn = false;
       let isActive = false; // 只有 isLoggedIn=true 時才可信
       let countdownTimer = null;
-      let remainingSeconds = 0;
 
       function safeGetSessionItem(key) {
         try {
@@ -415,11 +414,10 @@
       }
 
       function parseRetryAfterSeconds(resp) {
-        const header = resp.headers.get("Retry-After");
-        if (!header) return null;
-        const n = Number(header);
-        if (Number.isFinite(n) && n > 0) return Math.ceil(n);
-        return null;
+        const raw = resp.headers.get("Retry-After");
+        if (!raw) return null;
+        const n = parseInt(raw, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
       }
 
       function isValidEmailFormat(email) {
