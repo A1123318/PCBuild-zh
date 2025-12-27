@@ -526,6 +526,12 @@ def reset_password(
         _raise_400({"token": "重設密碼連結無效或已過期，請重新申請。"})
         raise  # 只是讓型別檢查器安靜
 
+    # 2) 新密碼不可與目前密碼相同
+    #verify_password(plain, hash) 會用 Argon2 驗證是否同一密碼
+    if verify_password(body.password, user.password_hash):
+        db.rollback()  # 避免 token 被標記使用的狀態留在 session 中（不 commit 也保守 rollback）
+        _raise_400({"password": "新密碼不可與原密碼相同，請重新設定。"})
+
     # 3) 更新密碼（Argon2id）
     user.password_hash = hash_password(body.password)
 
