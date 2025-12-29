@@ -118,7 +118,16 @@
     display: none;
     place-items: center;
     z-index: 9999;
-    background: color-mix(in srgb, CanvasText 35%, Canvas);
+
+    /* 改成半透明暗色遮罩，讓底下頁面可見 */
+    background: rgba(0, 0, 0, 0.35);
+
+    /* 讓遮罩後方的畫面模糊（關鍵） */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal-backdrop { background: rgba(0, 0, 0, 0.45); }
   }
   .modal-backdrop[aria-hidden="false"] { display: grid; }
 
