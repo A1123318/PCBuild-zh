@@ -124,6 +124,34 @@
   .top-bar__verify-link:hover {
     text-decoration: none;
   }
+  /* ===== Session 失效彈窗（沿用既有色系變數） ===== */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: none;
+    place-items: center;
+    z-index: 9999;
+    background: color-mix(in srgb, CanvasText 35%, Canvas);
+  }
+  .modal-backdrop[aria-hidden="false"] { display: grid; }
+
+  .modal-card {
+    width: min(520px, calc(100vw - 32px));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    padding: 18px 16px 14px;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin: 0 0 6px; }
+  .modal-body  { font-size: 14px; margin: 0 0 12px; opacity: 0.95; }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+  }
 </style>
 
 <!-- 新增：右上角註冊 / 登入按鈕 -->
@@ -145,6 +173,21 @@
   </div>
 </div>
 <div id="chat-hint" class="form-hint"></div>
+
+<!-- Session 失效彈窗 -->
+<div id="session-modal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="session-modal-title">
+  <div class="modal-card">
+    <h2 id="session-modal-title" class="modal-title">登入狀態已失效</h2>
+    <p id="session-modal-msg" class="modal-body">
+      您已被登出或登入狀態已失效（可能因為您在其他裝置重設密碼或登出）。請重新登入後再繼續使用。
+    </p>
+    <div class="modal-actions">
+      <a href="/register.html" class="top-bar__button">註冊</a>
+      <a href="/login.html" class="top-bar__button">前往登入</a>
+    </div>
+  </div>
+</div>
+
 
 <!-- Markdown 解析＋XSS 安全消毒（CDN） -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -243,8 +286,28 @@ if (!chatEnabled) {
       credentials: "same-origin",
       body: JSON.stringify(payload),
     });
+
+    // 401：session 失效 → 彈窗 + 鎖 UI + 切回登入/註冊
+    if (r.status === 401) {
+      handleSessionInvalid("您已被登出或登入狀態已失效，請重新登入後再繼續使用。");
+      return;
+    }
+
+    // 403：可用於「未驗證」或「權限不足」→ 鎖聊天（不彈 session 失效）
+    if (r.status === 403) {
+      configureChatForUnverifiedUser();
+      return;
+    }
+
+    // 其他非 2xx：顯示一般錯誤（不要當成登出）
+    if (!r.ok) {
+      appendMarkdown("ai", "目前服務暫時無法處理請求，請稍後再試。", false);
+      return;
+    }
+
+    // 只有成功才解析 JSON
     const data = await r.json();
-    const aiText = String(data?.reply ?? '');
+    const aiText = String(data?.reply ?? "");
 
     // UI 顯示 AI
     appendMarkdown('ai', aiText, false);
@@ -260,7 +323,8 @@ if (!chatEnabled) {
   } catch (e) {
     appendMarkdown('ai', `發生錯誤：\`${String(e)}\``, false);
   } finally {
-    chatSendBtn.disabled = false;
+    // 依目前狀態決定是否啟用按鈕，避免 401/403 已鎖定 UI 後又被 finally 打開
+    chatSendBtn.disabled = !chatEnabled;
   }
 }
 
@@ -320,6 +384,99 @@ function configureChatForActiveUser() {
   }
 }
 
+let hadValidSession = false;      // 本頁曾經驗證過有 session（避免訪客一進來就跳「被登出」）
+let sessionModalShown = false;
+let heartbeatTimer = null;
+
+const sessionModal = document.getElementById("session-modal");
+const sessionModalMsg = document.getElementById("session-modal-msg");
+
+// 把右上角 actions 恢復成「註冊 / 登入」
+function renderTopBarGuest() {
+  if (!topBarActions) return;
+
+  // 清空既有節點（比 textContent="" 更明確）
+  topBarActions.replaceChildren();
+
+  const reg = document.createElement("a");
+  reg.href = "/register.html";
+  reg.className = "top-bar__button";
+  reg.textContent = "註冊";
+
+  const login = document.createElement("a");
+  login.href = "/login.html";
+  login.className = "top-bar__button";
+  login.textContent = "登入";
+
+  topBarActions.append(reg, login);
+}
+
+function showSessionExpiredModal(message) {
+  if (sessionModalShown) return;
+  sessionModalShown = true;
+
+  if (sessionModalMsg && message) sessionModalMsg.textContent = message;
+  if (sessionModal) sessionModal.setAttribute("aria-hidden", "false");
+}
+
+// 統一入口：session 失效時的 UI 切換
+function handleSessionInvalid(reason = "您的登入狀態已失效，請重新登入後再繼續使用。") {
+  // 1) 停止心跳
+  stopSessionHeartbeat();
+
+  // 2) 切 UI：關閉聊天、切回 guest topbar
+  configureChatForGuest();
+  renderTopBarGuest();
+
+  // 3) 彈窗
+  showSessionExpiredModal(reason);
+}
+
+function stopSessionHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
+// 僅在「本頁確定登入過」的前提下啟動心跳；避免訪客浪費流量
+function startSessionHeartbeat() {
+  stopSessionHeartbeat();
+
+  const tick = async () => {
+    // 分頁不可見就不做（節省資源）
+    if (document.visibilityState !== "visible") return;
+
+    try {
+      const resp = await fetch("/api/auth/me", { method: "GET", credentials: "same-origin" });
+
+      if (resp.status === 401) {
+        // 只有曾經有 session，才顯示「已被登出」彈窗
+        if (hadValidSession) handleSessionInvalid("您已被登出或登入狀態已失效，請重新登入。");
+        return;
+      }
+
+      // 其它狀態（例如暫時 5xx）不強制登出，也不彈窗；留給使用者操作時再處理
+    } catch (_) {
+      // 網路錯誤不視為登出；避免 FastAPI 暫停就把人踢掉
+    }
+  };
+
+  // 30 秒一次（可依需求調 15~60）
+  heartbeatTimer = setInterval(tick, 30_000);
+
+  // 立刻跑一次，加快收斂
+  tick();
+}
+
+// Page Visibility：從 hidden 回來時，補跑一次（不用等下一個 interval）
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && hadValidSession && !sessionModalShown) {
+    // 回到頁籤就補檢查一次
+    startSessionHeartbeat();
+  }
+});
+
 async function initHomeAuthGuard() {
   try {
     const resp = await fetch("/api/auth/me", {
@@ -329,8 +486,12 @@ async function initHomeAuthGuard() {
 
     if (!resp.ok) {
       configureChatForGuest();
+      hadValidSession = false;
+      stopSessionHeartbeat();
       return;
     }
+    hadValidSession = true;
+    startSessionHeartbeat();
 
     const data = await resp.json();
 
