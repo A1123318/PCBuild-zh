@@ -111,19 +111,6 @@
   .top-bar__button:hover {
     background: color-mix(in srgb, CanvasText 10%, Canvas);
   }
-  .top-bar__user {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  }
-  .top-bar__verify-link {
-    font-size: 13px;
-    color: #d00;
-    text-decoration: underline;
-  }
-  .top-bar__verify-link:hover {
-    text-decoration: none;
-  }
   /* ===== Session 失效彈窗（沿用既有色系變數） ===== */
   .modal-backdrop {
     position: fixed;
@@ -152,6 +139,30 @@
     justify-content: flex-end;
     align-items: center;
   }
+  .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.modal-close {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.modal-close:focus {
+  outline: 2px solid color-mix(in srgb, CanvasText 65%, Canvas);
+  outline-offset: 2px;
+}
 </style>
 
 <!-- 新增：右上角註冊 / 登入按鈕 -->
@@ -176,11 +187,14 @@
 
 <!-- Session 失效彈窗 -->
 <div id="session-modal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="session-modal-title">
-  <div class="modal-card">
-    <h2 id="session-modal-title" class="modal-title">登入狀態已失效</h2>
-    <p id="session-modal-msg" class="modal-body">
-      您已被登出或登入狀態已失效（可能因為您在其他裝置重設密碼或登出）。請重新登入後再繼續使用。
-    </p>
+  <div class="modal-card" tabindex="-1">
+    <div class="modal-header">
+      <h2 id="session-modal-title" class="modal-title">登入狀態已失效</h2>
+      <button type="button" id="session-modal-close" class="modal-close" aria-label="關閉">×</button>
+    </div>
+
+    <p id="session-modal-msg" class="modal-body">...</p>
+
     <div class="modal-actions">
       <a href="/register.html" class="top-bar__button">註冊</a>
       <a href="/login.html" class="top-bar__button">前往登入</a>
@@ -390,6 +404,54 @@ let heartbeatTimer = null;
 
 const sessionModal = document.getElementById("session-modal");
 const sessionModalMsg = document.getElementById("session-modal-msg");
+const sessionModalCloseBtn = document.getElementById("session-modal-close");
+
+// 1) 點 X 關閉
+if (sessionModalCloseBtn) {
+  sessionModalCloseBtn.addEventListener("click", closeSessionExpiredModal);
+}
+
+// 2) 點遮罩（只在點到 backdrop 本身時）
+if (sessionModal) {
+  sessionModal.addEventListener("click", (e) => {
+    if (e.target === sessionModal) closeSessionExpiredModal();
+  });
+}
+
+// 3) Esc 關閉
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (sessionModal && sessionModal.getAttribute("aria-hidden") === "false") {
+    closeSessionExpiredModal();
+  }
+});
+
+let lastActiveEl = null;
+
+function closeSessionExpiredModal() {
+  if (!sessionModal) return;
+  sessionModal.setAttribute("aria-hidden", "true");
+
+  // 關閉後就停留在 guest 首頁（你已在 handleSessionInvalid 做了 guest UI 切換）
+  // 恢復焦點（可選）
+  if (lastActiveEl && typeof lastActiveEl.focus === "function") {
+    try { lastActiveEl.focus(); } catch (_) {}
+  }
+}
+
+function openSessionExpiredModal(message) {
+  if (sessionModalShown) return;
+  sessionModalShown = true;
+
+  lastActiveEl = document.activeElement;
+
+  if (sessionModalMsg && message) sessionModalMsg.textContent = message;
+  sessionModal.setAttribute("aria-hidden", "false");
+
+  // 讓焦點落在 modal（可及性）
+  const focusTarget = sessionModalCloseBtn || sessionModal.querySelector('a,button,[tabindex]:not([tabindex="-1"])');
+  if (focusTarget) focusTarget.focus();
+}
 
 // 把右上角 actions 恢復成「註冊 / 登入」
 function renderTopBarGuest() {
@@ -411,14 +473,6 @@ function renderTopBarGuest() {
   topBarActions.append(reg, login);
 }
 
-function showSessionExpiredModal(message) {
-  if (sessionModalShown) return;
-  sessionModalShown = true;
-
-  if (sessionModalMsg && message) sessionModalMsg.textContent = message;
-  if (sessionModal) sessionModal.setAttribute("aria-hidden", "false");
-}
-
 // 統一入口：session 失效時的 UI 切換
 function handleSessionInvalid(reason = "您的登入狀態已失效，請重新登入後再繼續使用。") {
   // 1) 停止心跳
@@ -429,7 +483,7 @@ function handleSessionInvalid(reason = "您的登入狀態已失效，請重新�
   renderTopBarGuest();
 
   // 3) 彈窗
-  showSessionExpiredModal(reason);
+  openSessionExpiredModal(reason);
 }
 
 function stopSessionHeartbeat() {
@@ -523,8 +577,6 @@ async function loadAuthState() {
     // 新增：若帳號已驗證，清掉 verify sessionStorage（避免其他頁沒清到）
     if (data && data.is_active === true) clearVerifySessionStorage();
     const username = data.username || data.email || "User";
-
-    topBarActions.textContent = "";
 
     // 已登入 → 顯示使用者名稱 +（尚未驗證連結）+ 登出按鈕
     topBarActions.textContent = "";
