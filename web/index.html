@@ -410,6 +410,7 @@ function configureChatForActiveUser() {
 let hadValidSession = false;      // 本頁曾經驗證過有 session（避免訪客一進來就跳「被登出」）
 let sessionModalShown = false;
 let heartbeatTimer = null;
+let heartbeatStartTimer = null;
 
 const sessionModal = document.getElementById("session-modal");
 const sessionModalMsg = document.getElementById("session-modal-msg");
@@ -487,6 +488,9 @@ function handleSessionInvalid(reason = "您的登入狀態已失效，請重新�
   // 1) 停止心跳
   stopSessionHeartbeat();
 
+  // 2) 標記為無有效 session
+  hadValidSession = false;
+
   // 2) 切 UI：關閉聊天、切回 guest topbar
   configureChatForGuest();
   renderTopBarGuest();
@@ -496,47 +500,53 @@ function handleSessionInvalid(reason = "您的登入狀態已失效，請重新�
 }
 
 function stopSessionHeartbeat() {
+  if (heartbeatStartTimer) {
+    clearTimeout(heartbeatStartTimer);
+    heartbeatStartTimer = null;
+  }
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
   }
 }
 
-// 僅在「本頁確定登入過」的前提下啟動心跳；避免訪客浪費流量
+
+async function heartbeatTick() {
+  if (document.visibilityState !== "visible") return;
+
+  try {
+    const resp = await fetch("/api/auth/me", { method: "GET", credentials: "same-origin" });
+
+    if (resp.status === 401) {
+      if (hadValidSession) handleSessionInvalid("您已被登出或登入狀態已失效，請重新登入。");
+      return;
+    }
+  } catch (_) {
+    // 網路錯誤不視為登出
+  }
+}
+
+// 啟動心跳檢查（含隨機初始延遲）
 function startSessionHeartbeat() {
   stopSessionHeartbeat();
 
-  const tick = async () => {
-    // 分頁不可見就不做（節省資源）
-    if (document.visibilityState !== "visible") return;
+  const BASE_MS = 60_000;
+  const JITTER_MS = 5_000;
 
-    try {
-      const resp = await fetch("/api/auth/me", { method: "GET", credentials: "same-origin" });
+  const firstDelay = BASE_MS + Math.floor(Math.random() * (JITTER_MS + 1));
 
-      if (resp.status === 401) {
-        // 只有曾經有 session，才顯示「已被登出」彈窗
-        if (hadValidSession) handleSessionInvalid("您已被登出或登入狀態已失效，請重新登入。");
-        return;
-      }
-
-      // 其它狀態（例如暫時 5xx）不強制登出，也不彈窗；留給使用者操作時再處理
-    } catch (_) {
-      // 網路錯誤不視為登出；避免 FastAPI 暫停就把人踢掉
-    }
-  };
-
-  // 30 秒一次（可依需求調 15~60）
-  heartbeatTimer = setInterval(tick, 30_000);
-
-  // 立刻跑一次，加快收斂
-  tick();
+  heartbeatStartTimer = setTimeout(() => {
+    heartbeatTick();
+    heartbeatTimer = setInterval(heartbeatTick, BASE_MS);
+  }, firstDelay);
 }
 
 // Page Visibility：從 hidden 回來時，補跑一次（不用等下一個 interval）
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && hadValidSession && !sessionModalShown) {
     // 回到頁籤就補檢查一次
-    startSessionHeartbeat();
+    heartbeatTick();        // 立刻檢查一次
+    startSessionHeartbeat(); // 再以 60s + jitter 重新排程
   }
 });
 
@@ -548,6 +558,7 @@ async function initHomeAuthGuard() {
     });
 
     if (!resp.ok) {
+      renderTopBarGuest();
       configureChatForGuest();
       hadValidSession = false;
       stopSessionHeartbeat();
@@ -557,6 +568,7 @@ async function initHomeAuthGuard() {
     startSessionHeartbeat();
 
     const data = await resp.json();
+    await loadAuthState(data);
 
     if (data && data.is_active === false) {
       configureChatForUnverifiedUser();
@@ -568,21 +580,29 @@ async function initHomeAuthGuard() {
   } catch (err) {
     console.error("initHomeAuthGuard failed:", err);
     configureChatForGuest();
+    renderTopBarGuest();
+    hadValidSession = false;
+    stopSessionHeartbeat();
   }
 }
 
-async function loadAuthState() {
+async function loadAuthState(preloadedData = null) {
   if (!topBarActions) return;
 
   try {
-    const resp = await fetch("/api/auth/me", {
-      method: "GET",
-      credentials: "same-origin",
-    });
+    // 若外部已提供 data（例如 initHomeAuthGuard 已 fetch /me），就直接使用，避免重複請求
+    let data = preloadedData;
 
-    if (!resp.ok) return;
+    if (!data) {
+      const resp = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "same-origin",
+      });
 
-    const data = await resp.json();
+      if (!resp.ok) return;
+
+      data = await resp.json();
+    }
     // 新增：若帳號已驗證，清掉 verify sessionStorage（避免其他頁沒清到）
     if (data && data.is_active === true) clearVerifySessionStorage();
     const username = data.username || data.email || "User";
@@ -710,6 +730,5 @@ document.addEventListener('DOMContentLoaded', () => {
   configureChatForGuest();
   autoResize();
   initHomeAuthGuard();
-  loadAuthState();
 });
 </script>
