@@ -226,6 +226,22 @@
       const emailField = document.querySelector('[data-field="email"]');
       const passwordField = document.querySelector('[data-field="password"]');
 
+      // 已登入者不應停留在登入頁：直接導回首頁（用 replace 避免返回又回到登入頁）
+      (async function redirectIfAuthed() {
+        try {
+          const resp = await fetch("/api/auth/me", {
+            method: "GET",
+            credentials: "same-origin",
+          });
+
+          if (resp.ok) {
+            window.location.replace("/");
+          }
+        } catch (_) {
+          // 後端離線 / 網路錯誤：不要強制跳轉，讓使用者仍可看到登入頁與錯誤訊息
+        }
+      })();
+
       function clearFieldErrors() {
         [emailField, passwordField].forEach((field) => {
           if (!field) return;
@@ -360,10 +376,6 @@
                 console.error("Login error:", resp.status, data);
                 return;
               }
-
-              // 這裡才是「真正登入成功」的情況（user.is_active = True）
-              window.location.href = "/";
-
 
           // 登入成功：session cookie 已設定，導回首頁
           window.location.href = "/";
