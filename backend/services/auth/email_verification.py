@@ -422,7 +422,7 @@ def send_signup_verification_for_user(
     # 2) 使用 FastAPI 的 url_for 產生完整網址
     #    假設在 auth router 裡有：
     #        @router.get("/verify-email/{token}", name="verify_email")
-    verify_url = request.url_for("verify_email", token=public_token)
+    verify_url = request.url_for("verify_email", token=public_token).replace(scheme="https")
 
     # 3) 寄出驗證信
     send_signup_verification_email(
@@ -525,7 +525,7 @@ def send_password_reset_for_user(
     # 6) 產生重設密碼頁面的路由網址
     #    之後會在 auth router 中實作：
     #      @router.get("/reset-password/{token}", name="reset_password")
-    reset_url = request.url_for("reset_password", token=public_token)
+    reset_url = request.url_for("reset_password", token=public_token).replace(scheme="https")
 
     # 7) 寄出重設密碼 Email（版型與註冊驗證信相同）
     send_password_reset_email(
