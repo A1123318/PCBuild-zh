@@ -1,8 +1,4 @@
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# backend/db.py
+from backend.core.database import engine, SessionLocal
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+__all__ = ["engine", "SessionLocal"]
