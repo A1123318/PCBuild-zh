@@ -6,4 +6,11 @@ EMAIL_ADAPTER = TypeAdapter(EmailStr)
 
 SESSION_COOKIE_NAME = "pcbuild_session"
 SESSION_EXPIRES_MINUTES = int(os.getenv("SESSION_EXPIRES_MINUTES", "120"))
-RESEND_MIN_INTERVAL_SECONDS = 60  # 與前端倒數一致（1 分鐘）
+
+from backend.services.auth.verification.core import (
+    VerificationPurpose,
+    get_resend_min_interval_seconds,
+)
+
+RESEND_SIGNUP_MIN_INTERVAL_SECONDS = get_resend_min_interval_seconds(VerificationPurpose.SIGNUP)
+RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS = get_resend_min_interval_seconds(VerificationPurpose.PASSWORD_RESET)

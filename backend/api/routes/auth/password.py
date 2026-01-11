@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.deps import get_db
-from backend.api.auth_config import EMAIL_ADAPTER, RESEND_MIN_INTERVAL_SECONDS
+from backend.api.auth_config import EMAIL_ADAPTER, RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS
 from backend.api.auth_utils import clear_session_cookie, raise_400
 from backend.models import User, Session as SessionModel, EmailVerificationToken
 from backend.schemas.auth import ForgotPasswordIn, ResetPasswordIn
@@ -101,9 +101,9 @@ def forgot_password(
             .first()
         )
 
-        retry_after = RESEND_MIN_INTERVAL_SECONDS
+        retry_after = RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS
         if latest is not None:
-            wait_until = latest.created_at + timedelta(seconds=RESEND_MIN_INTERVAL_SECONDS)
+            wait_until = latest.created_at + timedelta(seconds=RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS)
             remaining = (wait_until - now).total_seconds()
             retry_after = max(1, int(math.ceil(remaining)))
 

@@ -11,7 +11,7 @@ from backend.api.deps import get_db
 from backend.api.auth_config import (
     EMAIL_ADAPTER,
     SESSION_COOKIE_NAME,
-    RESEND_MIN_INTERVAL_SECONDS,
+    RESEND_SIGNUP_MIN_INTERVAL_SECONDS,
 )
 from backend.api.auth_utils import (
     clear_session_cookie,
@@ -179,7 +179,7 @@ def resend_verification(
     db: OrmSession = Depends(get_db),
 ):
     # 所有成功回覆都帶 Retry-After，讓前端不用猜 60 秒
-    response.headers["Retry-After"] = str(RESEND_MIN_INTERVAL_SECONDS)
+    response.headers["Retry-After"] = str(RESEND_SIGNUP_MIN_INTERVAL_SECONDS)
 
     # 0) email 可能是 None
     email = (getattr(body, "email", None) or "").strip()
@@ -205,7 +205,7 @@ def resend_verification(
     try:
         resend_signup_verification_for_email(db=db, email=email, request=request)
     except VerificationEmailRateLimitedError:
-        retry_after = RESEND_MIN_INTERVAL_SECONDS
+        retry_after = RESEND_SIGNUP_MIN_INTERVAL_SECONDS
 
         # 若查得到 user（且尚未啟用），用最新 token.created_at 精準計算剩餘秒數
         if user is not None and not user.is_active:
@@ -220,7 +220,7 @@ def resend_verification(
             )
             if latest is not None:
                 now = datetime.now(timezone.utc)
-                wait_until = latest.created_at + timedelta(seconds=RESEND_MIN_INTERVAL_SECONDS)
+                wait_until = latest.created_at + timedelta(seconds=RESEND_SIGNUP_MIN_INTERVAL_SECONDS)
                 remaining = (wait_until - now).total_seconds()
                 retry_after = max(1, int(math.ceil(remaining)))
 

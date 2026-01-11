@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+from datetime import timedelta
 
-from argon2 import PasswordHasher, exceptions as argon2_exceptions
 from sqlalchemy.orm import Session
 
 from backend.models import User, EmailVerificationToken
@@ -354,7 +352,7 @@ def resend_signup_verification_for_email(
         now = utcnow()
         if latest.created_at + timedelta(minutes=min_interval_minutes) > now:
             raise VerificationEmailRateLimitedError(
-                "驗證信寄送太頻繁，請在 1 分鐘後再試。"
+            f"驗證信寄送太頻繁，請在 {min_interval_minutes} 分鐘後再試。"
             )
 
     # 3) 寄出新的驗證信（內部會建立新的 token）

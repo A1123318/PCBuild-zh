@@ -113,3 +113,11 @@ def get_latest_token_for_user(
         .order_by(EmailVerificationToken.created_at.desc())
         .first()
     )
+
+
+def get_resend_min_interval_minutes(purpose: VerificationPurpose) -> int:
+    return RESEND_MIN_INTERVAL_MINUTES[purpose]
+
+
+def get_resend_min_interval_seconds(purpose: VerificationPurpose) -> int:
+    return get_resend_min_interval_minutes(purpose) * 60
