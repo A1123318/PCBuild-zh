@@ -7,9 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.api.chat import router as chat_router
-from backend.api.debug import router as debug_router
-from backend.api.auth import router as auth_router
+from backend.api.router import api_router
 
 # ===== App & CORS =====
 app = FastAPI()
@@ -53,9 +51,7 @@ class _DocsGateMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_DocsGateMiddleware)
 
 # ===== 掛載各個 router =====
-app.include_router(chat_router)
-app.include_router(debug_router)
-app.include_router(auth_router)
+app.include_router(api_router)
 
 # ===== 靜態網站：最後才 mount，避免吃掉 API 路由 =====
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
