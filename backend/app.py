@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from backend.api.router import api_router
 from contextlib import asynccontextmanager
 from backend.core.init_db import init_db_schema
+from backend.core.settings import get_settings
 
 # ===== App & CORS =====
 @asynccontextmanager
@@ -19,9 +20,10 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://pcbuild.redfiretw.xyz"],  # 開發期可改為 ["*"]
+    allow_origins=settings.cors_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
