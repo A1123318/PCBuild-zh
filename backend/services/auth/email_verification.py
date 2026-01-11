@@ -16,133 +16,20 @@ from backend.services.email.client import (
 
 from fastapi import Request
 
-
-class VerificationPurpose(str, Enum):
-    """驗證碼用途（目前使用 SIGNUP / PASSWORD_RESET）。"""
-    SIGNUP = "signup"
-    PASSWORD_RESET = "password_reset"
-    # 未來要做登入驗證可新增：
-    # LOGIN = "login"
-
-
-# 各用途預設有效時間（分鐘）
-# 後面計算 expires_at 一律直接用這裡的分鐘數。
-DEFAULT_LIFETIME_MINUTES: dict[VerificationPurpose, int] = {
-    # 註冊驗證：24 小時
-    VerificationPurpose.SIGNUP: 24 * 60,
-    # 忘記密碼：20 分鐘
-    VerificationPurpose.PASSWORD_RESET: 20,
-}
-
-# 各用途重新寄送驗證信 / 重設密碼信的最小間隔（分鐘）
-# 之後 rate limit 判斷一律從這裡取值。
-RESEND_MIN_INTERVAL_MINUTES: dict[VerificationPurpose, int] = {
-    # 註冊驗證信：1 分鐘冷卻
-    VerificationPurpose.SIGNUP: 1,
-    # 忘記密碼信：1 分鐘冷卻（之後若要調整再改這裡即可）
-    VerificationPurpose.PASSWORD_RESET: 1,
-}
-
-
-class VerificationEmailRateLimitedError(Exception):
-    """在允許時間間隔內過度頻繁要求重新寄送驗證信時拋出。"""
-
-
-# 專用 Argon2id hasher，用來雜湊「驗證碼」，與密碼雜湊邏輯隔離
-_token_hasher = PasswordHasher()
-
-
-class TokenState(str, Enum):
-    INVALID = "invalid"           # 格式錯、找不到、secret 不匹配
-    EXPIRED = "expired"           # 超過 expires_at
-    USED = "used"                 # token 本身已被消費
-    SUPERSEDED = "superseded"     # 被更新的 token 取代（例如只允許最新）
-    ALREADY_VERIFIED = "already_verified"  # SIGNUP：帳號已啟用，連結自然失效
-
-
-class InvalidOrExpiredTokenError(Exception):
-    """token 驗證失敗（前端統一顯示已失效；後端用 state 區分原因）。"""
-
-    def __init__(self, message: str = "驗證連結已失效。", *, state: TokenState = TokenState.INVALID):
-        super().__init__(message)
-        self.state = state
-
-
-# === 共用小工具 ===
-
-
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _hash_token(secret: str) -> str:
-    return _token_hasher.hash(secret)
-
-
-def _verify_token(secret: str, token_hash: str) -> bool:
-    try:
-        return _token_hasher.verify(token_hash, secret)
-    except (
-        argon2_exceptions.VerifyMismatchError,
-        argon2_exceptions.VerificationError,
-    ):
-        return False
-    except Exception:
-        return False
-
-
-def _split_public_token(public_token: str) -> tuple[int, str]:
-    """
-    將使用者收到的 token 拆成 (id, secret)。
-
-    格式: "<id>.<secret>"
-    - id: email_verification_tokens.id
-    - secret: 真正隨機字串，只存雜湊後版本在資料庫
-    """
-    try:
-        id_str, secret = public_token.split(".", 1)
-        token_id = int(id_str)
-    except (ValueError, AttributeError):
-        raise InvalidOrExpiredTokenError("Token 格式不正確。")
-
-    if not secret:
-        raise InvalidOrExpiredTokenError("Token 格式不正確。")
-
-    return token_id, secret
-
-
-def _resolve_lifetime_minutes(
-    purpose: VerificationPurpose,
-    override_minutes: int | None,
-) -> int:
-    """
-    依用途取得此類驗證碼的有效時間（以分鐘為單位）。
-
-    - 若有傳入 override_minutes，優先採用傳入值
-    - 否則使用 DEFAULT_LIFETIME_MINUTES[purpose]
-    """
-    if override_minutes is not None:
-        return override_minutes
-    return DEFAULT_LIFETIME_MINUTES[purpose]
-
-
-
-def _get_latest_token_for_user(
-    db: Session,
-    user_id: int,
-    *,
-    purpose: VerificationPurpose,
-) -> EmailVerificationToken | None:
-    """取得某個使用者在指定用途下最新的一筆驗證 token。"""
-    return (
-        db.query(EmailVerificationToken)
-        .filter(
-            EmailVerificationToken.user_id == user_id,
-            EmailVerificationToken.purpose == purpose.value,
-        )
-        .order_by(EmailVerificationToken.created_at.desc())
-        .first()
-    )
+from backend.services.auth.verification.core import (
+    VerificationPurpose,
+    DEFAULT_LIFETIME_MINUTES,
+    RESEND_MIN_INTERVAL_MINUTES,
+    VerificationEmailRateLimitedError,
+    TokenState,
+    InvalidOrExpiredTokenError,
+    utcnow,
+    hash_token,
+    verify_token,
+    split_public_token,
+    resolve_lifetime_minutes,
+    get_latest_token_for_user,
+)
 
 
 # === 通用發行 / 驗證流程（未綁定「註冊」或「登入」） ===
@@ -162,11 +49,11 @@ def issue_verification_token(
     - 支援自訂 expires_in_minutes，未指定時使用 DEFAULT_LIFETIME_MINUTES
     - 回傳給使用者的 public token 格式為 "<id>.<secret>"
     """
-    lifetime_minutes = _resolve_lifetime_minutes(purpose, expires_in_minutes)
+    lifetime_minutes = resolve_lifetime_minutes(purpose, expires_in_minutes)
 
     secret = secrets.token_urlsafe(32)
-    token_hash = _hash_token(secret)
-    now = _utcnow()
+    token_hash = hash_token(secret)
+    now = utcnow()
     expires_at = now + timedelta(minutes=lifetime_minutes)
 
     token = EmailVerificationToken(
@@ -199,7 +86,7 @@ def issue_password_reset_token_for_user(
     - latest-only + SUPERSEDED” 來失效舊 token（由驗證階段判斷）。
     - 回傳 public token（給上層組合 reset URL 使用）。
     """
-    now = _utcnow()
+    now = utcnow()
 
     # 1) 取得冷卻時間（分鐘）
     if min_interval_minutes is None:
@@ -208,7 +95,7 @@ def issue_password_reset_token_for_user(
         ]
 
     # 2) 檢查最近一次 PASSWORD_RESET token 的建立時間
-    latest = _get_latest_token_for_user(
+    latest = get_latest_token_for_user(
         db=db,
         user_id=user.id,
         purpose=VerificationPurpose.PASSWORD_RESET,
@@ -244,7 +131,7 @@ def _load_valid_token_and_user(
 
     若 token 無效 / 過期 / hash 不符 / user 不存在，會拋出 InvalidOrExpiredTokenError。
     """
-    token_id, secret = _split_public_token(public_token)
+    token_id, secret = split_public_token(public_token)
 
     token = (
         db.query(EmailVerificationToken)
@@ -264,10 +151,10 @@ def _load_valid_token_and_user(
         raise InvalidOrExpiredTokenError("找不到對應的驗證資訊。", state=TokenState.INVALID)
 
     # 2) 驗證 secret 是否匹配 token_hash（避免只靠 token_id 就可用）
-    if not _verify_token(secret, token.token_hash):
+    if not verify_token(secret, token.token_hash):
         raise InvalidOrExpiredTokenError("找不到對應的驗證資訊。", state=TokenState.INVALID)
 
-    now = _utcnow()
+    now = utcnow()
 
     # 3) 驗證是否過期
     if token.expires_at < now:
@@ -276,7 +163,7 @@ def _load_valid_token_and_user(
     # 4) 依用途驗證其他條件
     if expected_purpose == VerificationPurpose.PASSWORD_RESET:
         # 先判斷是否為最新（讓非最新的就算 is_used=True 也回 SUPERSEDED）
-        latest = _get_latest_token_for_user(
+        latest = get_latest_token_for_user(
             db=db,
             user_id=user.id,
             purpose=VerificationPurpose.PASSWORD_RESET,
@@ -458,13 +345,13 @@ def resend_signup_verification_for_email(
         return
 
     # 2) 檢查最近一次寄送時間，做簡單的 rate limit
-    latest = _get_latest_token_for_user(
+    latest = get_latest_token_for_user(
         db=db,
         user_id=user.id,
         purpose=VerificationPurpose.SIGNUP,
     )
     if latest is not None:
-        now = _utcnow()
+        now = utcnow()
         if latest.created_at + timedelta(minutes=min_interval_minutes) > now:
             raise VerificationEmailRateLimitedError(
                 "驗證信寄送太頻繁，請在 1 分鐘後再試。"
@@ -494,7 +381,7 @@ def send_password_reset_for_user(
     - 由這層組合 reset URL，並呼叫 send_password_reset_email 寄信
     """
 
-    now = _utcnow()
+    now = utcnow()
 
     # 2) 取得重設密碼的冷卻時間（分鐘）
     min_interval_minutes = RESEND_MIN_INTERVAL_MINUTES[
@@ -502,7 +389,7 @@ def send_password_reset_for_user(
     ]
 
     # 3) 檢查最近一次 PASSWORD_RESET token 建立時間（rate limit）
-    latest = _get_latest_token_for_user(
+    latest = get_latest_token_for_user(
         db=db,
         user_id=user.id,
         purpose=VerificationPurpose.PASSWORD_RESET,
