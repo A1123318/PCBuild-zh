@@ -12,13 +12,15 @@ from backend.api.auth_utils import clear_session_cookie, raise_400
 from backend.models import User, Session as SessionModel, EmailVerificationToken
 from backend.schemas.auth import ForgotPasswordIn, ResetPasswordIn
 from backend.security import hash_password, verify_password
-from backend.services.auth.email_verification import (
-    InvalidOrExpiredTokenError,
-    VerificationEmailRateLimitedError,
-    send_password_reset_for_user,
-    VerificationPurpose,
+from backend.services.auth.password_reset import send_password_reset_for_user
+from backend.services.auth.email_tokens import (
     consume_verification_token,
     load_valid_token_and_user,
+)
+from backend.services.auth.verification.core import (
+    InvalidOrExpiredTokenError,
+    VerificationEmailRateLimitedError,
+    VerificationPurpose,
 )
 
 router = APIRouter()
