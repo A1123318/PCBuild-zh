@@ -22,7 +22,7 @@ from backend.api.auth_deps import get_current_user
 from backend.models import User, Session as SessionModel, EmailVerificationToken
 from backend.schemas.auth import RegisterIn, RegisterOut, ResendVerificationIn
 from backend.security import hash_password
-from backend.services.auth.email_verification import (
+from backend.services.auth.signup_verification import (
     send_signup_verification_for_user,
     verify_signup_token_and_activate_user,
     resend_signup_verification_for_email,
