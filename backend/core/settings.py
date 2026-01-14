@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     def genai_api_key(self) -> Optional[str]:
         # Google SDK 文件亦說明兩者同時存在時 GOOGLE_API_KEY 會優先
         return self.google_api_key or self.gemini_api_key
+    
+    # Rate limit（可用環境變數覆蓋）
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    rate_limit_default: str = Field(default="300/minute", alias="RATE_LIMIT_DEFAULT")
+
 
 
 @lru_cache(maxsize=1)

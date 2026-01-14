@@ -8,3 +8,4 @@ email-validator>=2.1
 resend
 pydantic-settings
 alembic
+slowapi==0.1.9
