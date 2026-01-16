@@ -1,5 +1,5 @@
 # backend/api/routes/auth/password_reset.py
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.deps import get_db
@@ -12,14 +12,17 @@ from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,
     VerificationPurpose,
 )
+from backend.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 # ===== 忘記密碼：重設密碼 =====
 @router.post("/reset-password")
+@limiter.limit("5/minute")
 def reset_password(
     body: ResetPasswordIn,
+    request: Request,  # ← 新增（即使函式內不用）
     response: Response,
     db: OrmSession = Depends(get_db),
 ):

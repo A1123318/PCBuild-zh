@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.deps import get_db
@@ -15,13 +15,16 @@ from backend.api.auth_utils import raise_400
 from backend.models import User, Session as SessionModel
 from backend.schemas.auth import LoginIn
 from backend.security import verify_password
+from backend.core.rate_limit import limiter 
 
 router = APIRouter()
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 def login(
     body: LoginIn,
+    request: Request,   # ← 新增（SlowAPI 需要）
     response: Response,
     db: OrmSession = Depends(get_db),
 ):

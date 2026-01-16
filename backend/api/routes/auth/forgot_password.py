@@ -15,12 +15,14 @@ from backend.services.auth.verification.core import (
     VerificationEmailRateLimitedError,
     VerificationPurpose,
 )
+from backend.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 # ===== 忘記密碼：發送重設密碼信 =====
 @router.post("/forgot-password")
+@limiter.limit("5/minute")
 def forgot_password(
     body: ForgotPasswordIn,
     request: Request,

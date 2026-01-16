@@ -1,5 +1,5 @@
 # backend/api/routes/auth/password_entry.py
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession
 
@@ -9,14 +9,17 @@ from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,
     VerificationPurpose,
 )
+from backend.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 # ===== 忘記密碼：從 Email 連結進入重設頁面 =====
 @router.get("/reset-password/{token}", name="reset_password")
+@limiter.limit("30/minute")
 def reset_password_entry(
     token: str,
+    request: Request,  # ← 新增（即使函式內不用）
     db: OrmSession = Depends(get_db),
 ):
     """

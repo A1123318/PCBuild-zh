@@ -16,12 +16,14 @@ from backend.services.auth.verification.core import (
     VerificationEmailRateLimitedError,
     VerificationPurpose,
 )
+from backend.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 # ===== 重新寄送驗證信 =====
 @router.post("/resend-verification")
+@limiter.limit("5/minute")
 def resend_verification(
     body: ResendVerificationIn,
     request: Request,

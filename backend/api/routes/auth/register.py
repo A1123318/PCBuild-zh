@@ -10,12 +10,14 @@ from backend.models import User
 from backend.schemas.auth import RegisterIn, RegisterOut
 from backend.security import hash_password
 from backend.services.auth.signup_verification import send_signup_verification_for_user
+from backend.core.rate_limit import limiter
 
 router = APIRouter()
 
 
 # ===== 註冊 =====
 @router.post("/register", response_model=RegisterOut)
+@limiter.limit("5/minute")
 def register(
     body: RegisterIn,
     request: Request,
