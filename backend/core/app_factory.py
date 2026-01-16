@@ -1,5 +1,6 @@
 # backend/core/app_factory.py
 from fastapi import FastAPI
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -13,6 +14,7 @@ from backend.core.static_site import mount_static_site
 from backend.core.rate_limit_handler import rate_limit_exceeded_handler
 from backend.core.security_headers import add_security_headers_middleware
 from backend.core.csrf import add_csrf_protection_middleware
+from backend.core.debug_gate import add_debug_gate_middleware
 
 
 def create_app() -> FastAPI:
@@ -27,7 +29,15 @@ def create_app() -> FastAPI:
     add_cors_middleware(app)
     add_csrf_protection_middleware(app)
     add_security_headers_middleware(app)
-    app.add_middleware(DocsGateMiddleware)
+    add_debug_gate_middleware(app)
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=[
+            "pcbuild.redfiretw.xyz",
+            "localhost",
+            "127.0.0.1",
+        ],
+    )
 
     include_api_routes(app)
     mount_static_site(app)
