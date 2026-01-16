@@ -1,7 +1,8 @@
 # backend/api/routes/chat.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from backend.api.auth_deps import get_active_user
+from backend.core.rate_limit import limiter
 from backend.models import User
 from backend.schemas.chat import ChatIn, ChatOut
 from backend.services.chat.service import generate_chat_reply
@@ -10,7 +11,9 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 
 @router.post("/chat", response_model=ChatOut)
+@limiter.limit("30/minute")
 def chat(
+    request: Request,  # SlowAPI 需要顯式 request 參數
     body: ChatIn,
     _: User = Depends(get_active_user),  # 未登入→401；未驗證→403
 ) -> ChatOut:
