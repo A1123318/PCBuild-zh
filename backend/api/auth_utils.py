@@ -9,17 +9,18 @@ from backend.api.auth_config import SESSION_COOKIE_NAME, SESSION_EXPIRES_MINUTES
 from backend.models import Session as SessionModel
 
 
-def set_session_cookie(resp: Response, session_id: str) -> None:
+def set_session_cookie(resp: Response, session_id: str, *, max_age: int | None = None) -> None:
+    ttl = SESSION_EXPIRES_MINUTES * 60 if max_age is None else max(1, int(max_age))
     resp.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=session_id,
-        max_age=SESSION_EXPIRES_MINUTES * 60,
+        max_age=ttl,
         httponly=True,
         secure=True,
         samesite="Lax",
         path="/",
     )
-    
+
 
 def clear_session_cookie(resp: Response) -> None:
     # 用 set_cookie 清除，帶上與設定時一致的屬性，避免部分瀏覽器刪不掉

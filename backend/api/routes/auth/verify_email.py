@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.deps import get_db
 from backend.api.auth_config import SESSION_COOKIE_NAME
-from backend.api.auth_utils import clear_session_cookie, get_valid_session_from_request
+from backend.api.auth_utils import clear_session_cookie, get_valid_session_from_request, set_session_cookie
 from backend.models import Session as SessionModel
 from backend.services.auth.signup_verification import verify_signup_token_and_activate_user
 from backend.services.auth.verification.core import InvalidOrExpiredTokenError
@@ -86,13 +86,5 @@ def verify_email(
     db.commit()
 
     resp = _success("home")
-    resp.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=str(new_session.id),
-        max_age=max_age,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        path="/",
-    )
+    set_session_cookie(resp, str(new_session.id), max_age=max_age)
     return resp
