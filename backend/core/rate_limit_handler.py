@@ -17,8 +17,10 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSO
     payload = {"errors": {"_global": "請求過於頻繁，請稍後再試。"}}
     resp = JSONResponse(status_code=429, content=payload)
 
-    # 保留 SlowAPI 預設回應的 header（Retry-After / X-RateLimit-* 等）
+    # 只保留 rate limit 相關 header，避免複製 Content-Length 造成協定錯誤
     for k, v in default_resp.headers.items():
-        resp.headers[k] = v
+        k_lower = k.lower()
+        if k_lower == "retry-after" or k_lower.startswith("x-ratelimit-"):
+            resp.headers[k] = v
 
     return resp
