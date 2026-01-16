@@ -10,7 +10,7 @@ from backend.models import User
 from backend.schemas.auth import RegisterIn, RegisterOut
 from backend.security import hash_password
 from backend.services.auth.signup_verification import send_signup_verification_for_user
-from backend.core.rate_limit import limiter
+from backend.core.middleware.rate_limit import limiter
 
 router = APIRouter()
 

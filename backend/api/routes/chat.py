@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Request
 
 from backend.api.auth_deps import get_active_user
-from backend.core.rate_limit import limiter
+from backend.core.middleware.rate_limit import limiter
 from backend.models import User
 from backend.schemas.chat import ChatIn, ChatOut
 from backend.services.chat.service import generate_chat_reply

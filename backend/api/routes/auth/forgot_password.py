@@ -15,7 +15,7 @@ from backend.services.auth.verification.core import (
     VerificationEmailRateLimitedError,
     VerificationPurpose,
 )
-from backend.core.rate_limit import limiter
+from backend.core.middleware.rate_limit import limiter
 
 router = APIRouter()
 
