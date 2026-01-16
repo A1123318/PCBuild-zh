@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Rate limit（可用環境變數覆蓋）
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     rate_limit_default: str = Field(default="300/minute", alias="RATE_LIMIT_DEFAULT")
-
+    rate_limit_storage_uri: str = Field(default="memory://", alias="RATE_LIMIT_STORAGE_URI")
 
 
 @lru_cache(maxsize=1)

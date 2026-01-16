@@ -45,4 +45,5 @@ limiter = Limiter(
     default_limits=[_settings.rate_limit_default],
     enabled=_settings.rate_limit_enabled,
     headers_enabled=True,  # ← 保留你原本行為（若你想關可再談）
+    storage_uri=_settings.rate_limit_storage_uri,
 )
