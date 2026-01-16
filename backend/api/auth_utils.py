@@ -5,9 +5,21 @@ from uuid import UUID
 from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.auth_config import SESSION_COOKIE_NAME
+from backend.api.auth_config import SESSION_COOKIE_NAME, SESSION_EXPIRES_MINUTES
 from backend.models import Session as SessionModel
 
+
+def set_session_cookie(resp: Response, session_id: str) -> None:
+    resp.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_id,
+        max_age=SESSION_EXPIRES_MINUTES * 60,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        path="/",
+    )
+    
 
 def clear_session_cookie(resp: Response) -> None:
     # 用 set_cookie 清除，帶上與設定時一致的屬性，避免部分瀏覽器刪不掉

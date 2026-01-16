@@ -11,7 +11,7 @@ from backend.api.auth_config import (
     SESSION_COOKIE_NAME,
     SESSION_EXPIRES_MINUTES,
 )
-from backend.api.auth_utils import raise_400
+from backend.api.auth_utils import raise_400, set_session_cookie
 from backend.models import User, Session as SessionModel
 from backend.schemas.auth import LoginIn
 from backend.security import verify_password
@@ -55,15 +55,7 @@ def login(
         db.add(session)
         db.commit()
 
-        response.set_cookie(
-            key=SESSION_COOKIE_NAME,
-            value=str(session.id),
-            max_age=int(ttl.total_seconds()),
-            httponly=True,
-            secure=True,
-            samesite="Lax",
-            path="/",
-        )
+        set_session_cookie(response, str(session.id))
 
         return {"ok": True, "needs_verification": True}
 
@@ -81,13 +73,5 @@ def login(
     db.add(session)
     db.commit()
 
-    response.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=str(session.id),
-        max_age=int(ttl.total_seconds()),
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        path="/",
-    )
+    set_session_cookie(response, str(session.id))
     return {"ok": True}
