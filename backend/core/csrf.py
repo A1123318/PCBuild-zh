@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from backend.core.settings import get_settings
+from backend.api.auth_config import SESSION_COOKIE_NAME
 
 
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -48,8 +49,8 @@ def add_csrf_protection_middleware(app: FastAPI) -> None:
         if not request.url.path.startswith(_API_PREFIX) or request.method not in _UNSAFE_METHODS:
             return await call_next(request)
 
-        # 沒帶 cookie：通常不是瀏覽器 session 驗證（或非 cookie-auth），不做 CSRF 檢查
-        if not request.cookies:
+        # 未帶 session cookie：不視為 session 驗證請求，不做 CSRF 檢查
+        if SESSION_COOKIE_NAME not in request.cookies:
             return await call_next(request)
 
         origin = request.headers.get("origin")
