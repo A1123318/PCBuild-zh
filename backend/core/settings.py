@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     rate_limit_default: str = Field(default="300/minute", alias="RATE_LIMIT_DEFAULT")
     rate_limit_storage_uri: str = Field(default="memory://", alias="RATE_LIMIT_STORAGE_URI")
 
+    # CSRF trusted origins（用逗號分隔的字串）
+    csrf_trusted_origins: str = Field(default="", alias="CSRF_TRUSTED_ORIGINS")
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
