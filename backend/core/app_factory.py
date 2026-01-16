@@ -11,6 +11,7 @@ from backend.core.routes import include_api_routes
 from backend.core.settings import get_settings
 from backend.core.static_site import mount_static_site
 from backend.core.rate_limit_handler import rate_limit_exceeded_handler
+from backend.core.security_headers import add_security_headers_middleware
 
 
 def create_app() -> FastAPI:
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
         app.add_middleware(SlowAPIMiddleware)
 
     add_cors_middleware(app)
+    add_security_headers_middleware(app)
     app.add_middleware(DocsGateMiddleware)
 
     include_api_routes(app)
