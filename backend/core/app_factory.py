@@ -1,7 +1,6 @@
 # backend/core/app_factory.py
 from fastapi import FastAPI
 
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -11,6 +10,7 @@ from backend.core.rate_limit import limiter
 from backend.core.routes import include_api_routes
 from backend.core.settings import get_settings
 from backend.core.static_site import mount_static_site
+from backend.core.rate_limit_handler import rate_limit_exceeded_handler
 
 
 def create_app() -> FastAPI:
@@ -19,7 +19,7 @@ def create_app() -> FastAPI:
 
     if settings.rate_limit_enabled:
         app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
         app.add_middleware(SlowAPIMiddleware)
 
     add_cors_middleware(app)
