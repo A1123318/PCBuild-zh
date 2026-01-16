@@ -46,4 +46,11 @@ limiter = Limiter(
     enabled=_settings.rate_limit_enabled,
     headers_enabled=True,  # ← 保留你原本行為（若你想關可再談）
     storage_uri=_settings.rate_limit_storage_uri,
+
+    # 新增：Redis 暫時不可用時，退回 memory（避免服務整體失效）
+    in_memory_fallback_enabled=True,
+    in_memory_fallback=[_settings.rate_limit_default],
+
+    # 新增：避免同一個 Redis 被其他專案共用時 key 衝突（你有多個 compose 專案時特別有用）
+    key_prefix="pcbuild:",
 )
