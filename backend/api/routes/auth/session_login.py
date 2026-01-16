@@ -21,6 +21,7 @@ router = APIRouter()
 
 
 @router.post("/login")
+@limiter.shared_limit("20/minute", scope="auth_sensitive")
 @limiter.limit("10/minute")
 def login(
     body: LoginIn,

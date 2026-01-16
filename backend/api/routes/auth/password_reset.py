@@ -19,6 +19,7 @@ router = APIRouter()
 
 # ===== 忘記密碼：重設密碼 =====
 @router.post("/reset-password")
+@limiter.shared_limit("20/minute", scope="auth_sensitive")
 @limiter.limit("5/minute")
 def reset_password(
     body: ResetPasswordIn,

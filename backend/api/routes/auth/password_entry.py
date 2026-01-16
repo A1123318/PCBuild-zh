@@ -16,7 +16,8 @@ router = APIRouter()
 
 # ===== 忘記密碼：從 Email 連結進入重設頁面 =====
 @router.get("/reset-password/{token}", name="reset_password")
-@limiter.limit("30/minute")
+@limiter.shared_limit("20/minute", scope="auth_sensitive")
+@limiter.limit("10/minute")
 def reset_password_entry(
     token: str,
     request: Request,  # ← 新增（即使函式內不用）
