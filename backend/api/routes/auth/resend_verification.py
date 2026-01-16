@@ -23,7 +23,7 @@ router = APIRouter()
 
 # ===== 重新寄送驗證信 =====
 @router.post("/resend-verification")
-@limiter.limit("5/minute")
+@limiter.shared_limit("10/minute", scope="email_actions")
 def resend_verification(
     body: ResendVerificationIn,
     request: Request,

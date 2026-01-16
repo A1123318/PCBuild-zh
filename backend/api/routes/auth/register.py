@@ -17,7 +17,7 @@ router = APIRouter()
 
 # ===== 註冊 =====
 @router.post("/register", response_model=RegisterOut)
-@limiter.limit("5/minute")
+@limiter.shared_limit("10/minute", scope="email_actions")
 def register(
     body: RegisterIn,
     request: Request,

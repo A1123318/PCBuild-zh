@@ -22,7 +22,7 @@ router = APIRouter()
 
 # ===== 忘記密碼：發送重設密碼信 =====
 @router.post("/forgot-password")
-@limiter.limit("5/minute")
+@limiter.shared_limit("10/minute", scope="email_actions")
 def forgot_password(
     body: ForgotPasswordIn,
     request: Request,
