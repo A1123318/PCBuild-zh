@@ -1,4 +1,4 @@
-# backend/services/email/templates_password_reset.py
+# backend/services/email/templates/password_reset.py
 from __future__ import annotations
 
 

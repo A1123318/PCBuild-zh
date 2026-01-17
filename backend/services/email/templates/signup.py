@@ -1,4 +1,4 @@
-# backend/services/email/templates_signup.py
+# backend/services/email/templates/signup.py
 from __future__ import annotations
 
 
