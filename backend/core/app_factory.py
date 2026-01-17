@@ -3,9 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.core.middleware import add_app_middlewares
-from backend.core.routes import include_api_routes
+from backend.core.bootstrap.routes import include_api_routes
 from backend.core.settings import get_settings
-from backend.core.static_site import mount_static_site
+from backend.core.bootstrap.static_site import mount_static_site
 
 
 def create_app() -> FastAPI:

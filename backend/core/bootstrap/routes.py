@@ -1,4 +1,4 @@
-# backend/core/routes.py
+# backend/core/bootstrap/routes.py
 from fastapi import FastAPI
 
 from backend.api.router import api_router

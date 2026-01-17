@@ -1,4 +1,4 @@
-# backend/core/static_site.py
+# backend/core/bootstrap/static_site.py
 from __future__ import annotations
 
 from pathlib import Path
