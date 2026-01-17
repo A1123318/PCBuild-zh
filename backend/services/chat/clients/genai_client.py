@@ -1,4 +1,4 @@
-# backend/services/chat/genai_client.py
+# backend/services/chat/clients/genai_client.py
 from functools import lru_cache
 
 from google import genai

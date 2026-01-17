@@ -1,7 +1,7 @@
 # backend/services/chat/service.py
 from backend.schemas.chat import Turn
 from backend.services.chat.config import MODEL_NAME
-from backend.services.chat.genai_client import get_genai_client
+from backend.services.chat.clients.genai_client import get_genai_client
 from backend.services.chat.prompt import build_prompt
 
 
