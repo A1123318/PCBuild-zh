@@ -5,7 +5,7 @@ from backend.api.dependencies.auth import get_active_user
 from backend.core.middleware.throttling.rate_limit import limiter
 from backend.models import User
 from backend.schemas.chat import ChatIn, ChatOut
-from backend.services.chat.service import generate_chat_reply
+from backend.services.chat import generate_chat_reply
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
