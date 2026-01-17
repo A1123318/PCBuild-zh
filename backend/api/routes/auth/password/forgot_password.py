@@ -10,7 +10,7 @@ from backend.api.auth.config import EMAIL_ADAPTER, RESEND_PASSWORD_RESET_MIN_INT
 from backend.api.auth.utils import raise_400
 from backend.models import User, EmailVerificationToken
 from backend.schemas.auth import ForgotPasswordIn
-from backend.services.auth.password_reset import send_password_reset_for_user
+from backend.services.auth.workflows.password_reset import send_password_reset_for_user
 from backend.services.auth.verification.core import (
     VerificationEmailRateLimitedError,
     VerificationPurpose,

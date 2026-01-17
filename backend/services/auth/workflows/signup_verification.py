@@ -1,4 +1,4 @@
-# backend/services/auth/signup_verification.py
+# backend/services/workflows/signup_verification.py
 from __future__ import annotations
 
 from datetime import timedelta

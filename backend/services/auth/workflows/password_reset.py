@@ -1,4 +1,4 @@
-# backend/services/auth/password_reset.py
+# backend/services/auth/workflows/password_reset.py
 from __future__ import annotations
 
 from fastapi import Request

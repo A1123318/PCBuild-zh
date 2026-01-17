@@ -11,7 +11,7 @@ from backend.api.auth.utils import raise_400
 from backend.api.dependencies.auth import get_current_user
 from backend.models import User, EmailVerificationToken
 from backend.schemas.auth import ResendVerificationIn
-from backend.services.auth.signup_verification import resend_signup_verification_for_email
+from backend.services.auth.workflows.signup_verification import resend_signup_verification_for_email
 from backend.services.auth.verification.core import (
     VerificationEmailRateLimitedError,
     VerificationPurpose,

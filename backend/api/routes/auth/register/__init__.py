@@ -9,7 +9,7 @@ from backend.api.auth.utils import raise_400
 from backend.models import User
 from backend.schemas.auth import RegisterIn, RegisterOut
 from backend.security import hash_password
-from backend.services.auth.signup_verification import send_signup_verification_for_user
+from backend.services.auth.workflows.signup_verification import send_signup_verification_for_user
 from backend.core.middleware.throttling.rate_limit import limiter
 
 router = APIRouter()
