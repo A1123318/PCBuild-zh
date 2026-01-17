@@ -2,7 +2,7 @@
 import math
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
@@ -26,6 +26,7 @@ router = APIRouter()
 def forgot_password(
     body: ForgotPasswordIn,
     request: Request,
+    response: Response, # <- 新增這行（符合 SlowAPI headers_enabled=True 的要求）
     db: OrmSession = Depends(get_db),
 ):
     """
