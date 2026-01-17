@@ -14,8 +14,8 @@ def mount_static_site(app: FastAPI) -> None:
     注意：請在 include_router 之後呼叫，避免 root mount 吃掉其他路由。
     StaticFiles(html=True) 會在目錄請求時自動回傳 index.html。
     """
-    backend_dir = Path(__file__).resolve().parents[1]  # .../backend
-    project_root = backend_dir.parent                  # 專案根目錄
+    here = Path(__file__).resolve()
+    project_root = here.parents[3]   # .../app
     static_dir = project_root / "web"
 
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="site")
