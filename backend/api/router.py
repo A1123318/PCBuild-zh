@@ -1,7 +1,7 @@
 # backend/api/router.py
 from fastapi import APIRouter
 
-from backend.api.auth import router as auth_router
+from backend.api.routes.auth import router as auth_router
 from backend.api.routes.chat import router as chat_router
 from backend.api.routes.debug import router as debug_router
 
