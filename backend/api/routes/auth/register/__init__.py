@@ -1,5 +1,5 @@
 # backend/api/routes/auth/register/__init__.py
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from sqlalchemy.orm import Session as OrmSession
 
@@ -21,6 +21,7 @@ router = APIRouter()
 def register(
     body: RegisterIn,
     request: Request,
+    response: Response, # <- 新增這行（符合 SlowAPI headers_enabled=True 的要求）
     db: OrmSession = Depends(get_db),
 ) -> RegisterOut:
     # 1. 檢查 Email 格式（避免 Pydantic 回 422）
