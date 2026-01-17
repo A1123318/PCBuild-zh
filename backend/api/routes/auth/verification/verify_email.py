@@ -7,8 +7,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
-from backend.api.auth_config import SESSION_COOKIE_NAME
-from backend.api.auth_utils import clear_session_cookie, get_valid_session_from_request, set_session_cookie
+from backend.api.auth.config import SESSION_COOKIE_NAME
+from backend.api.auth.utils import clear_session_cookie, get_valid_session_from_request, set_session_cookie
 from backend.models import Session as SessionModel
 from backend.services.auth.signup_verification import verify_signup_token_and_activate_user
 from backend.services.auth.verification.core import InvalidOrExpiredTokenError

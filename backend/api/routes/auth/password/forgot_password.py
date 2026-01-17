@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
-from backend.api.auth_config import EMAIL_ADAPTER, RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS
-from backend.api.auth_utils import raise_400
+from backend.api.auth.config import EMAIL_ADAPTER, RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS
+from backend.api.auth.utils import raise_400
 from backend.models import User, EmailVerificationToken
 from backend.schemas.auth import ForgotPasswordIn
 from backend.services.auth.password_reset import send_password_reset_for_user

@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.auth_config import SESSION_COOKIE_NAME, SESSION_EXPIRES_MINUTES
+from backend.api.auth.config import SESSION_COOKIE_NAME, SESSION_EXPIRES_MINUTES
 from backend.models import Session as SessionModel
 
 

@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from backend.core.settings import get_settings
-from backend.api.auth_config import SESSION_COOKIE_NAME
+from backend.api.auth.config import SESSION_COOKIE_NAME
 
 
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

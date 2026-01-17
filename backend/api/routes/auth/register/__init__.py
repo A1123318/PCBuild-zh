@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
-from backend.api.auth_config import EMAIL_ADAPTER
-from backend.api.auth_utils import raise_400
+from backend.api.auth.config import EMAIL_ADAPTER
+from backend.api.auth.utils import raise_400
 from backend.models import User
 from backend.schemas.auth import RegisterIn, RegisterOut
 from backend.security import hash_password

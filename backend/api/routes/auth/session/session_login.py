@@ -6,12 +6,12 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
-from backend.api.auth_config import (
+from backend.api.auth.config import (
     EMAIL_ADAPTER,
     SESSION_COOKIE_NAME,
     SESSION_EXPIRES_MINUTES,
 )
-from backend.api.auth_utils import raise_400, set_session_cookie
+from backend.api.auth.utils import raise_400, set_session_cookie
 from backend.models import User, Session as SessionModel
 from backend.schemas.auth import LoginIn
 from backend.security import verify_password
