@@ -1,0 +1,1 @@
+# backend/core/middleware/gates/__init__.py

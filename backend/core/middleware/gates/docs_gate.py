@@ -1,4 +1,4 @@
-# backend/core/docs_gate.py
+# backend/core/middleware/gates/docs_gate.py
 from ipaddress import ip_address, ip_network
 
 from fastapi import Request, Response

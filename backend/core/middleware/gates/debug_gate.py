@@ -1,4 +1,4 @@
-# backend/core/debug_gate.py
+# backend/core/middleware/gates/debug_gate.py
 from __future__ import annotations
 
 from fastapi import FastAPI, Request

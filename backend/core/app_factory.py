@@ -2,34 +2,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-
-from backend.core.middleware.cors import add_cors_middleware
-from backend.core.middleware.docs_gate import DocsGateMiddleware
-from backend.core.middleware.rate_limit import limiter
+from backend.core.middleware import add_app_middlewares
 from backend.core.routes import include_api_routes
 from backend.core.settings import get_settings
 from backend.core.static_site import mount_static_site
-from backend.core.middleware.rate_limit_handler import rate_limit_exceeded_handler
-from backend.core.middleware.security_headers import add_security_headers_middleware
-from backend.core.middleware.csrf import add_csrf_protection_middleware
-from backend.core.middleware.debug_gate import add_debug_gate_middleware
 
 
 def create_app() -> FastAPI:
     app = FastAPI()
     settings = get_settings()
 
-    if settings.rate_limit_enabled:
-        app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
-        app.add_middleware(SlowAPIMiddleware)
+    add_app_middlewares(app, settings)
 
-    add_cors_middleware(app)
-    add_csrf_protection_middleware(app)
-    add_security_headers_middleware(app)
-    add_debug_gate_middleware(app)
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=[
@@ -42,3 +26,4 @@ def create_app() -> FastAPI:
     include_api_routes(app)
     mount_static_site(app)
     return app
+

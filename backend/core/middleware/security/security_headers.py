@@ -1,4 +1,4 @@
-# backend/core/security_headers.py
+# backend/core/middleware/security/security_headers.py
 from __future__ import annotations
 
 from fastapi import FastAPI, Request

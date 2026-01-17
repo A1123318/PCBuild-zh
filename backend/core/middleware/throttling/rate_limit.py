@@ -1,4 +1,4 @@
-# backend/core/rate_limit.py
+# backend/core/middleware/throttling/rate_limit.py
 from __future__ import annotations
 
 from ipaddress import ip_address  # ← 新增

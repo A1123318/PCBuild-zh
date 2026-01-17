@@ -1,4 +1,4 @@
-# backend/core/rate_limit_handler.py
+# backend/core/middleware/throttling/rate_limit_handler.py
 from __future__ import annotations
 
 from fastapi import Request
