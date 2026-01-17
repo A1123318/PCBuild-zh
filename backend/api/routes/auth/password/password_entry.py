@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.dependencies.db import get_db
-from backend.services.auth.email_tokens import load_valid_token_and_user
+from backend.services.auth.tokens.email_tokens import load_valid_token_and_user
 from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,
     VerificationPurpose,

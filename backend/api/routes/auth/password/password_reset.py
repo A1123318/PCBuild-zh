@@ -7,7 +7,7 @@ from backend.api.auth.utils import clear_session_cookie, raise_400
 from backend.models import Session as SessionModel
 from backend.schemas.auth import ResetPasswordIn
 from backend.security import hash_password, verify_password
-from backend.services.auth.email_tokens import consume_verification_token
+from backend.services.auth.tokens.email_tokens import consume_verification_token
 from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,
     VerificationPurpose,

@@ -7,7 +7,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from backend.models import User
-from backend.services.auth.email_tokens import (
+from backend.services.auth.tokens.email_tokens import (
     issue_verification_token,
     consume_verification_token,
 )

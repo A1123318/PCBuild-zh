@@ -1,4 +1,4 @@
-# backend/services/auth/email_tokens_issue.py
+# backend/services/auth/tokens/email_tokens_issue.py
 from __future__ import annotations
 
 import secrets

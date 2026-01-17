@@ -5,7 +5,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from backend.models import User
-from backend.services.auth.email_tokens import issue_password_reset_token_for_user
+from backend.services.auth.tokens.email_tokens import issue_password_reset_token_for_user
 from backend.services.email.client import send_password_reset_email
 
 

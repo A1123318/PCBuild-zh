@@ -1,4 +1,4 @@
-# backend/services/auth/email_tokens_validate.py
+# backend/services/auth/tokens/email_tokens_validate.py
 from __future__ import annotations
 
 from datetime import timedelta
