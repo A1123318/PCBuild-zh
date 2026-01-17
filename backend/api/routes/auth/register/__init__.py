@@ -1,4 +1,4 @@
-# backend/api/routes/auth/register.py
+# backend/api/routes/auth/register/__init__.py
 from fastapi import APIRouter, Depends, Request
 
 from sqlalchemy.orm import Session as OrmSession

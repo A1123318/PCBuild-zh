@@ -1,4 +1,4 @@
-# backend/api/routes/auth/verify_email.py
+# backend/api/routes/auth/verification/verify_email.py
 from datetime import datetime, timezone
 from uuid import uuid4
 

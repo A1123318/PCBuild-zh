@@ -1,4 +1,4 @@
-# backend/api/routes/auth/password_entry.py
+# backend/api/routes/auth/password/password_entry.py
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession

@@ -1,4 +1,4 @@
-# backend/api/routes/auth/resend_verification.py
+# backend/api/routes/auth/verification/resend_verification.py
 import math
 from datetime import datetime, timedelta, timezone
 

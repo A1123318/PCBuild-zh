@@ -1,4 +1,4 @@
-# backend/api/routes/auth/password_reset.py
+# backend/api/routes/auth/password/password_reset.py
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as OrmSession
 

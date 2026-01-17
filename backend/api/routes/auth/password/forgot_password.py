@@ -1,4 +1,4 @@
-# backend/api/routes/auth/forgot_password.py
+# backend/api/routes/auth/password/forgot_password.py
 import math
 from datetime import datetime, timedelta, timezone
 

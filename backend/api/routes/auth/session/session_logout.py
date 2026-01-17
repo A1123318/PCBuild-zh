@@ -1,4 +1,4 @@
-# backend/api/routes/auth/session_logout.py
+# backend/api/routes/auth/session/session_logout.py
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
