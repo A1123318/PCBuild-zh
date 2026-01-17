@@ -12,7 +12,7 @@ from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,
     VerificationPurpose,
 )
-from backend.core.middleware.rate_limit import limiter
+from backend.core.middleware.throttling.rate_limit import limiter
 
 router = APIRouter()
 

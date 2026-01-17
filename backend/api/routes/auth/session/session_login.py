@@ -15,7 +15,7 @@ from backend.api.auth.utils import raise_400, set_session_cookie
 from backend.models import User, Session as SessionModel
 from backend.schemas.auth import LoginIn
 from backend.security import verify_password
-from backend.core.middleware.rate_limit import limiter
+from backend.core.middleware.throttling.rate_limit import limiter
 
 router = APIRouter()
 
