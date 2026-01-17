@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.api.auth_config import SESSION_COOKIE_NAME
 from backend.api.auth_utils import clear_session_cookie
 from backend.models import Session as SessionModel

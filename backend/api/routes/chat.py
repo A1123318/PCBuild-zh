@@ -1,7 +1,7 @@
 # backend/api/routes/chat.py
 from fastapi import APIRouter, Depends, Request
 
-from backend.api.auth_deps import get_active_user
+from backend.api.dependencies.auth import get_active_user
 from backend.core.middleware.rate_limit import limiter
 from backend.models import User
 from backend.schemas.chat import ChatIn, ChatOut

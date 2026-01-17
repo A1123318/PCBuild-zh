@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.services.auth.email_tokens import load_valid_token_and_user
 from backend.services.auth.verification.core import (
     InvalidOrExpiredTokenError,

@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.api.auth_config import EMAIL_ADAPTER, RESEND_SIGNUP_MIN_INTERVAL_SECONDS
 from backend.api.auth_utils import raise_400
-from backend.api.auth_deps import get_current_user
+from backend.api.dependencies.auth import get_current_user
 from backend.models import User, EmailVerificationToken
 from backend.schemas.auth import ResendVerificationIn
 from backend.services.auth.signup_verification import resend_signup_verification_for_email

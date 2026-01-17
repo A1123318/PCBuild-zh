@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as OrmSession
 
 from backend.api.auth_config import SESSION_COOKIE_NAME
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.models import User, Session as SessionModel
 
 def get_current_user(

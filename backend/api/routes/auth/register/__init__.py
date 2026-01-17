@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request
 
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.api.auth_config import EMAIL_ADAPTER
 from backend.api.auth_utils import raise_400
 from backend.models import User

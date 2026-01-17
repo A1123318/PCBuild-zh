@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as OrmSession
 
-from backend.api.deps import get_db
+from backend.api.dependencies.db import get_db
 from backend.api.auth_config import EMAIL_ADAPTER, RESEND_PASSWORD_RESET_MIN_INTERVAL_SECONDS
 from backend.api.auth_utils import raise_400
 from backend.models import User, EmailVerificationToken
