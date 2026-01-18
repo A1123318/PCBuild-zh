@@ -1,0 +1,53 @@
+/* web/assets/css/common/auth-form.css
+   共用：Auth 表單頁共同樣式
+   僅收錄跨頁「完全一致」的 selector，確保 0 樣式變化。
+*/
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+input:focus {
+  outline: 2px solid color-mix(in srgb, CanvasText 25%, Canvas);
+  outline-offset: 1px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-primary {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 90px;
+}
+
+.btn-primary:hover:enabled {
+  background: var(--btn-bg-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hint a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--error);
+  min-height: 1.2em;
+  text-align: center;
+}
