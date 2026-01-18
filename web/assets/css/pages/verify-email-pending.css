@@ -1,129 +1,100 @@
-/* web/assets/css/verify-email-pending.css */
-      :root {
-        color-scheme: light dark;
-      }
-      :root {
-        --surface: Canvas;
-        --text: CanvasText;
-        --border: color-mix(in srgb, CanvasText 12%, Canvas);
-        --btn-bg: color-mix(in srgb, CanvasText 5%, Canvas);
-        --btn-bg-hover: color-mix(in srgb, CanvasText 10%, Canvas);
-        --muted: color-mix(in srgb, CanvasText 45%, Canvas);
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-          "Noto Sans TC", "PingFang TC", "Microsoft JhengHei";
-        background: radial-gradient(
-          circle at top,
-          color-mix(in srgb, CanvasText 5%, Canvas),
-          Canvas
-        );
-        color: var(--text);
-      }
-      .container {
-        width: 100%;
-        max-width: 420px;
-        padding: 16px;
-      }
-      .card {
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        padding: 24px 20px 20px;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-      }
-      .logo {
-        font-weight: 700;
-        font-size: 22px;
-        margin-bottom: 4px;
-        text-align: center;
-      }
-      .subtitle {
-        text-align: center;
-        font-size: 14px;
-        margin: 0 0 20px;
-        opacity: 0.9;
-      }
-      .content {
-        font-size: 14px;
-        line-height: 1.6;
-        margin-bottom: 20px;
-      }
-      .hint {
-        font-size: 13px;
-        color: var(--muted);
-        margin: 0 0 20px;
-      }
-      .actions-row {
-        display: flex;
-        justify-content: center;
-        margin-top: 8px;
-      }
-      button {
-        font-family: inherit;
-        cursor: pointer;
-      }
-      .btn-primary {
-        padding: 10px 18px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--btn-bg);
-        color: var(--text);
-        font-size: 14px;
-        font-weight: 500;
-        min-width: 160px;
-        text-align: center;
-      }
-      .btn-primary:hover:enabled {
-        background: var(--btn-bg-hover);
-      }
-      .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: default;
-      }
-      .back-home {
-        margin-top: 12px;
-        text-align: center;
-        font-size: 13px;
-      }
-      .back-home a {
-        color: inherit;
-        text-decoration: underline;
-      }
-      /* Email fallback input (方案 B) */
-      .email-fallback {
-        margin-top: 16px;
-        width: 100%;
-        text-align: left;
-      }
-      .field-label {
-        display: block;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.78);
-        margin-bottom: 6px;
-      }
-      .field-input {
-        width: 100%;
-        padding: 12px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        background: rgba(0, 0, 0, 0.35);
-        color: #fff;
-        outline: none;
-        box-sizing: border-box;
-        max-width: 100%;
-      }
-      .field-input:focus {
-        border-color: rgba(255, 255, 255, 0.35);
-      }
-      .field-hint {
-        margin-top: 6px;
-        font-size: 12px;
-        color: #ff6b6b;
-      }
-      #cooldown-hint { text-align: center; }
+/* web/assets/css/pages/verify-email-pending.css */
+:root {
+  --muted: color-mix(in srgb, CanvasText 45%, Canvas);
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Noto Sans TC", "PingFang TC", "Microsoft JhengHei";
+  background: radial-gradient(
+    circle at top,
+    color-mix(in srgb, CanvasText 5%, Canvas),
+    Canvas
+  );
+  color: var(--text);
+}
+.logo {
+  font-weight: 700;
+  font-size: 22px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  margin: 0 0 20px;
+  opacity: 0.9;
+}
+.content {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+.actions-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn-primary {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 160px;
+  text-align: center;
+}
+.btn-primary:hover:enabled {
+  background: var(--btn-bg-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+/* Email fallback input (方案 B) */
+.email-fallback {
+  margin-top: 16px;
+  width: 100%;
+  text-align: left;
+}
+.field-label {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  margin-bottom: 6px;
+}
+.field-input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  outline: none;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.field-input:focus {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.field-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #ff6b6b;
+}
+#cooldown-hint { text-align: center; }

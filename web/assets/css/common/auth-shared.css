@@ -1,0 +1,38 @@
+/* web/assets/css/common/auth-shared.css
+   共同抽出的基礎 token 與卡片容器樣式
+*/
+
+:root { color-scheme: light dark; }
+
+:root {
+  --surface: Canvas;
+  --text: CanvasText;
+  --border: color-mix(in srgb, CanvasText 12%, Canvas);
+  --btn-bg: color-mix(in srgb, CanvasText 5%, Canvas);
+  --btn-bg-hover: color-mix(in srgb, CanvasText 10%, Canvas);
+}
+
+.container {
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+}
+
+.card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 24px 20px 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.back-home {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.back-home a {
+  color: inherit;
+  text-decoration: underline;
+}
